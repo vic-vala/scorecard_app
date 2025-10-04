@@ -1,0 +1,21 @@
+{
+    "paths":{
+        "pdf_source": "./raw_pdfs",
+        "excel_source": "./excel_data/placeholder_excelname.xlsx",
+        "parsed_pdf_dir": "./parsed_pdfs",
+        "temp_dir": "./temp",
+        "scorecard_dir": "./scorecards",
+        "schema_source": "./src/schema/parsed_pdf_schema.py"
+    },
+    "scorecard_gen_settings":{
+        "comparison_type": "course",
+        "selections":{
+            "professor1":"1,Professor",
+            "professor2":"2,Professor",
+            "department": "CSE",
+            "code_mapping": "2241",
+            "course":"330"
+        },
+        "include_LLM_insights": "true"
+    }
+}
