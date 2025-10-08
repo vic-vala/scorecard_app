@@ -20,4 +20,4 @@ pip install -r requirements.txt
 1. Place PDFs in the ***raw_pdfs*** folder
 2. Place excel data in the ***excel_data*** folder
     - make sure the excel file name matches the path in ***config.json/paths/excel_source***
-    - i'd reccomend keeping the name as '**placeholder_excelname.xlsx**' or something discrete
+    - i'd reccomend keeping the name as '**placeholder_excelname.xlsx**' or something discrete/general
