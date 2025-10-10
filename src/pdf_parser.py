@@ -35,11 +35,46 @@ def parse_graph_avgs(pdf_text, pdf_json, key_map):
             if q_num in key_map:
                 part_key, field_key = key_map[q_num]
                 pdf_json[part_key][field_key] = avg
-                print(f"Match found: Q{q_num} | Part '{part_key}' | Key '{field_key}' set to {avg}")
         else:
             if q_num not in range(19, 23):
                 print(f"Skipping Q{q_num}: No average mapping defined for this question number.")
     return pdf_json
+
+def extract_comments(pdf_text):
+    comment_block_pattern = re.compile(
+        r"25\.\s+Comments\s*([\s\S]*?)\Z",
+        re.IGNORECASE | re.MULTILINE
+    )
+    
+    match = comment_block_pattern.search(pdf_text)
+    
+    if not match:
+        print("CRITICAL: Could not find the comments (Q25)")
+        return {}
+    
+    raw_comments = match.group(1).strip()
+    
+    if not raw_comments:
+        return {}
+
+    # Splitting on two or more consecutive newlines (\n{2,})
+    individual_comments_list = re.split(r'( \n)', raw_comments)
+    
+    # --- Step 3: Format the List into a Numbered Dictionary ---
+    formatted_comments = {}
+    comment_counter = 1
+    
+    for comment in individual_comments_list:
+        clean_comment = comment.strip()
+        
+        if clean_comment:
+            # Create the unique key: "Commenter 1", "Commenter 2", etc.
+            key = f"Student {comment_counter}"
+            formatted_comments[key] = clean_comment
+            comment_counter += 1
+
+    return formatted_comments
+
 
 def extract_pdf(raw_pdf_path, fi):
     # Json schema from python dict
@@ -85,7 +120,11 @@ def extract_pdf(raw_pdf_path, fi):
         # Extract Q1-Q18
         pdf_json = parse_graph_avgs(pdf_text, pdf_json, key_map)
         # TODO: Extract graph data without averages (Q19-22)
-        # TODO: Extract Comments programatically with identifies (array might be enough since index separates comments naturally)
+        # TODO: Extract Liked and Liked programatically with identifiers (array might be enough since index separates comments naturally)
+
+        # Extract Q25 (comments)
+        pdf_json["free_response"]["comments"] = extract_comments(pdf_text)
+
 
     except Exception as e:
         print(f"An error occured while processing {raw_pdf_path}: {e}")
@@ -126,6 +165,7 @@ def run_pdf_parser(pdf_source, parsed_base_dir):
         # Iterate through the folder and process each pdf
         else:
             for file in os.listdir(pdf_source):
+                # Ensure we are working with a .pdf file (not .gitkeep or anything else)
                 if file.endswith(".pdf"):
                     dpt, crs, prof, yr, trm = extract_filename(file)
                     fi = filename_info(dpt, crs, prof, yr, trm)

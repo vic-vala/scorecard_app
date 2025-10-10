@@ -1,12 +1,18 @@
 __pycache__/
 *.py[codz]
 *$py.class
+
+# Virtual environment
 pvenv/
 pvenv
+
+# Project specific
 courses_output/
 professors_output/
 raw_pdfs/*.pdf
 excel_data/*.xlsx
+temp/*.json
+
 .Python
 build/
 develop-eggs/

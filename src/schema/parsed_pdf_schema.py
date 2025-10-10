@@ -75,6 +75,7 @@ def initialize_pdf_json():
             "disliked" : [None],
             "comments" : [None],
         },
+        "llm_summary": None
     }
 def get_key_map():
     key_map = {}

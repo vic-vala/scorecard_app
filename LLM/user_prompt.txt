@@ -1,0 +1,13 @@
+Summarize the following numbered student comments from an instructor course evaluation into four sections: Positives, Neutral/Mixed, Negatives, and Summary.
+
+Requirements
+- Use the Feedback IDs (the numbers attached to each comment). In every bullet under Positives/Neutral/Mixed/Negatives, start with a parenthetical list of contributing IDs in ascending order:
+  - (Feedbacks 5, 18, 23) 3 students …
+  - (Feedback 12) 1 student …
+- Ensure the numeric count equals the number of unique IDs listed. If >6 IDs contribute, show the first 5 ascending, then “… +N more”.
+- Identify and count common sentiments using the thresholds in the system prompt.
+- Include 1–2 ID items only if clearly alarming/critical; otherwise exclude one-offs.
+- Keep bullets concise (≈20 words). Redact any names/identifiers.
+- End with a brief, impartial Summary stating the overall tone (Positive/Negative/Mixed) per the 60% rule.
+
+FREE RESPONSE COMMENTS
