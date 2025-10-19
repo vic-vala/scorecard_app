@@ -6,16 +6,20 @@
         "temp_dir": "./temp",
         "scorecard_dir": "./scorecards",
         "schema_source": "./src/schema/parsed_pdf_schema.py",
-        "gguf_path": "{drive}/your/absolute/path/qwen2.5-7b-instruct-q4_k_m.gguf",
+        "gguf_path": "./qwen2.5-7b-instruct-q4_k_m.gguf",
         "llm_prompt_dir": "./LLM"
     },
     "scorecard_gen_settings":{
+        "include_LLM_insights": "true"
+    },
+    "data_vis_settings":{
         "comparison_type": "course",
-        "professor1": "1, Professor",
+        "professor1": "1,Professor",
         "professor2": "2,Professor",
         "department": "CSE",
         "code_mapping": "2241",
         "cata":"470",
-        "include_LLM_insights": "true"
+        "sem": "Fall",
+        "year": "2011"
     }
 }

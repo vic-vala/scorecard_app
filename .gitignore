@@ -12,6 +12,7 @@ professors_output/
 raw_pdfs/*.pdf
 excel_data/*.xlsx
 temp/*.json
+*.gguf
 
 .Python
 build/

@@ -13,7 +13,7 @@ def load_config(path=CONFIG_PATH):
 def verify_directories(paths):
     print("Initializing file structure")
     # Check input directories
-    input_dirs = [paths['pdf_source'], os.path.dirname(paths['excel_source'])]
+    input_dirs = [paths['pdf_source'], os.path.dirname(paths['excel_source']), paths['llm_prompt_dir']]
     for input_dir in input_dirs:
         if not os.path.exists(input_dir):
             print(f"MISSING INPUT DIRECTORY: {input_dir}")
