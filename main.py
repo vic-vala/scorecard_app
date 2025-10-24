@@ -1,6 +1,6 @@
 import json
 import os
-from src import pdf_parser, utils, data_vis, llm_io
+from src import pdf_parser, utils, data_vis, llm_io, excel_parser
 
 if __name__ == "__main__":
     try:
@@ -15,7 +15,18 @@ if __name__ == "__main__":
 
         utils.verify_directories(config['paths'])
 
-        # TODO: Parse excel sheet(s)
+        # Parse Excel
+        print("📊 Starting Excel parser")
+        overwrite_csv = str(config.get("overwrite_settings", {}).get("overwrite_csv", "false")).lower() == "true"
+        excel_parser.run_excel_parser(paths['excel_source'], output_dir="./parsed_csvs", overwrite_csv=overwrite_csv)
+
+        # TODO: Clean CSV data
+        # This process should include the following at the very least:
+        #   1. Scrubbing (or handling) of "Total" rows
+        #   2. Semester/Term columns
+        #   3. First/last name columns
+        #   4. Handling of empty rows expecting numbers (replace with 0)
+        #   5. Finding any rows that are still invalid after all of that (strings where ints are expected, etc.)
 
         # Parse PDFs
         print("📄 Starting PDF parser")
