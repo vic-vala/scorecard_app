@@ -133,29 +133,44 @@ def save_json(pdf_json, fi,  parsed_base_dir):
         json.dump(pdf_json, file, indent=4)
     print(f"  ✅ Saved json data to {course_json_path} and {professor_json_path}.")
 
-def run_pdf_parser(pdf_source, parsed_base_dir):
+def _expected_json_paths(fi, parsed_base_dir):
+    course_output_dir = os.path.join(parsed_base_dir, "courses_output", f"{fi.department}_{fi.course}")
+    professor_output_dir = os.path.join(parsed_base_dir, "professors_output", f"{fi.professor}")
+    course_json_path = os.path.join(course_output_dir, f"{fi.term}_{fi.year}.json")
+    professor_json_path = os.path.join(professor_output_dir, f"{fi.department}_{fi.course}_{fi.term}_{fi.year}.json")
+    return course_json_path, professor_json_path
+
+def run_pdf_parser(pdf_source, parsed_base_dir, overwrite_json=False):
     try:
-        # Ensure that the directory holding the pdfs exists
         if not os.path.exists(pdf_source):
             os.makedirs(pdf_source)
             print(f"Directory created. Please add your PDF files to '{pdf_source}' folder.")
-        # Iterate through the folder and process each pdf
         else:
             for file in os.listdir(pdf_source):
-                # Ensure we are working with a .pdf file (not .gitkeep or anything else)
                 if file.endswith(".pdf"):
-                    dpt, crs, prof, yr, trm = extract_filename(file)
+                    extracted = extract_filename(file)
+                    if not extracted:
+                        print(f"  ⛔ Skipping {file}. Invalid filename format")
+                        continue
+                    dpt, crs, prof, yr, trm = extracted
                     fi = filename_info(dpt, crs, prof, yr, trm)
-                    if fi.department and fi.course and fi.professor and fi.year and fi.term:
-                        pdf_path = os.path.join(pdf_source, file)
-                        print(f"  ⏳ Processing {pdf_path}")
-                        print(f"  Department: {fi.department:<10} Course: {fi.course:<10} Professor: {fi.professor:<15} Year: {fi.year:<10} Term: {fi.term:<10}")
-                        pdf_json = extract_pdf(pdf_path, fi)
-                        if pdf_json:
-                            save_json(pdf_json, fi, parsed_base_dir)
-                        else:
-                            print(f"  ⛔ Could not extract data from {file}")         
-                else: 
+
+                    pdf_path = os.path.join(pdf_source, file)
+                    course_json_path, professor_json_path = _expected_json_paths(fi, parsed_base_dir)
+
+                    # Skip if JSON already exists and overwrite_json is False
+                    if not overwrite_json and os.path.exists(course_json_path) and os.path.exists(professor_json_path):
+                        print(f"  ⏭️ Skipping {file}: JSON already exists")
+                        continue
+
+                    print(f"  ⏳ Processing {pdf_path}")
+                    print(f"  Department: {fi.department:<10} Course: {fi.course:<10} Professor: {fi.professor:<15} Year: {fi.year:<10} Term: {fi.term:<10}")
+                    pdf_json = extract_pdf(pdf_path, fi)
+                    if pdf_json:
+                        save_json(pdf_json, fi, parsed_base_dir)
+                    else:
+                        print(f"  ⛔ Could not extract data from {file}")
+                else:
                     print(f"  ⛔ Skipping {file}. Invalid filename format")
     except Exception as e:
         print(f"An error has occured: {e}")

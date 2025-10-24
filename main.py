@@ -10,13 +10,16 @@ if __name__ == "__main__":
         scorecard_settings = config['scorecard_gen_settings']
         data_settings = config['data_vis_settings']
         include_llm_insights = str(scorecard_settings.get("include_LLM_insights", "false")).lower() == "true"
+        overwrite_json = str(config.get("overwrite_settings", {}).get("overwrite_json", "false")).lower() == "true"
         print("✅ Config file loaded")
 
         utils.verify_directories(config['paths'])
 
+        # TODO: Parse excel sheet(s)
+
         # Parse PDFs
         print("📄 Starting PDF parser")
-        pdf_parser.run_pdf_parser(paths['pdf_source'], paths['parsed_pdf_dir'])
+        pdf_parser.run_pdf_parser(paths['pdf_source'], paths['parsed_pdf_dir'], overwrite_json=overwrite_json)
 
         # Run LLM IO
         if (include_llm_insights):
