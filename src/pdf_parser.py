@@ -40,40 +40,12 @@ def parse_graph_avgs(pdf_text, pdf_json, key_map):
                 print(f"Skipping Q{q_num}: No average mapping defined for this question number.")
     return pdf_json
 
-def extract_comments(pdf_text):
-    comment_block_pattern = re.compile(
-        r"25\.\s+Comments\s*([\s\S]*?)\Z",
-        re.IGNORECASE | re.MULTILINE
-    )
-    
-    match = comment_block_pattern.search(pdf_text)
-    
-    if not match:
-        print("CRITICAL: Could not find the comments (Q25)")
-        return {}
-    
-    raw_comments = match.group(1).strip()
-    
-    if not raw_comments:
-        return {}
 
-    # Splitting on two or more consecutive newlines (\n{2,})
-    individual_comments_list = re.split(r'( \n)', raw_comments)
-    
-    # --- Step 3: Format the List into a Numbered Dictionary ---
-    formatted_comments = {}
-    comment_counter = 1
-    
-    for comment in individual_comments_list:
-        clean_comment = comment.strip()
-        
-        if clean_comment:
-            # Create the unique key: "Commenter 1", "Commenter 2", etc.
-            key = f"Student {comment_counter}"
-            formatted_comments[key] = clean_comment
-            comment_counter += 1
-
-    return formatted_comments
+def extract_comments(pdf_text, pdf_path, expected_n=None):
+    comments = _collect_blocks_between(pdf_path, r"^25\.\s*Comments", None)
+    if isinstance(expected_n, int) and expected_n > 0 and len(comments) > expected_n:
+        comments = comments[:expected_n-1] + [" ".join(comments[expected_n-1:]).strip()]
+    return comments
 
 
 def extract_pdf(raw_pdf_path, fi):
@@ -119,11 +91,17 @@ def extract_pdf(raw_pdf_path, fi):
 
         # Extract Q1-Q18
         pdf_json = parse_graph_avgs(pdf_text, pdf_json, key_map)
-        # TODO: Extract graph data without averages (Q19-22)
-        # TODO: Extract Liked and Liked programatically with identifiers (array might be enough since index separates comments naturally)
-
-        # Extract Q25 (comments)
-        pdf_json["free_response"]["comments"] = extract_comments(pdf_text)
+        # Q19-Q22
+        pdf_json = extract_general_info(pdf_text, pdf_json)
+        # Free responses
+        try:
+            expected_n = int(pdf_json["eval_info"].get("response_count") or 0)
+        except Exception:
+            expected_n = None
+        likes, dislikes = extract_free_response(pdf_text, raw_pdf_path, expected_n)
+        pdf_json["free_response"]["liked"] = likes
+        pdf_json["free_response"]["disliked"] = dislikes
+        pdf_json["free_response"]["comments"] = extract_comments(pdf_text, raw_pdf_path, expected_n)
 
 
     except Exception as e:
@@ -151,10 +129,7 @@ def save_json(pdf_json, fi,  parsed_base_dir):
     # Save json to the respective path
     with open(course_json_path, 'w') as file:
         json.dump(pdf_json, file, indent=4)
-    print(f"Saved json data to {course_json_path}.")
-    with open(professor_json_path, 'w') as file:
-        json.dump(pdf_json, file, indent=4)
-    print(f"Saved json data to {professor_json_path}.")
+    print(f"  ✅ Saved json data to {course_json_path}.")
 
 def run_pdf_parser(pdf_source, parsed_base_dir):
     try:
@@ -171,15 +146,86 @@ def run_pdf_parser(pdf_source, parsed_base_dir):
                     fi = filename_info(dpt, crs, prof, yr, trm)
                     if fi.department and fi.course and fi.professor and fi.year and fi.term:
                         pdf_path = os.path.join(pdf_source, file)
-                        print(f"Processing {pdf_path}")
-                        print(f"Department: {fi.department}\nCourse: {fi.course}\nProfessor: {fi.professor}\nYear: {fi.year}\nTerm: {fi.term}\n")
+                        print(f"  ⏳ Processing {pdf_path}")
+                        print(f"  Department: {fi.department:<10} Course: {fi.course:<10} Professor: {fi.professor:<15} Year: {fi.year:<10} Term: {fi.term:<10}")
                         pdf_json = extract_pdf(pdf_path, fi)
                         if pdf_json:
                             save_json(pdf_json, fi, parsed_base_dir)
                         else:
-                            print(f"Could not extract data from {file}")         
+                            print(f"  ⛔ Could not extract data from {file}")         
                 else: 
-                    print(f"Skipping {file}. Invalid filename format")
+                    print(f"  ⛔ Skipping {file}. Invalid filename format")
     except Exception as e:
         print(f"An error has occured: {e}")
 
+def _clean_text(s: str) -> str:
+    return re.sub(r"[ \t]+", " ", s.strip())
+
+def _parse_table_block(block_text: str, rows_regex):
+    results = {}
+    for label, key in rows_regex:
+        lab = re.escape(label)
+        r = re.compile(rf"(?mi)^\s*{lab}\s+(\d+)\s+(\d+\.\d+%)\s*$")
+        m = r.search(block_text)
+        if m:
+            results[key] = [m.group(1), m.group(2)]
+        else:
+            results[key] = [None, None]
+    return results
+
+def extract_general_info(pdf_text, pdf_json):
+    q19 = re.search(r"19\.\s+Is this a required course.*?\n([\s\S]*?)\n\s*20\.", pdf_text, re.IGNORECASE)
+    if q19:
+        rows = [("Yes", "yes"), ("No", "no")]
+        pdf_json["general_info"]["req_course_avg"] = _parse_table_block(q19.group(1), rows)
+    q20 = re.search(r"20\.\s+What are the average hours/week.*?\n([\s\S]*?)\n\s*21\.", pdf_text, re.IGNORECASE)
+    if q20:
+        rows = [("16", "16hr"), ("8", "8hr"), ("4", "4hr"), ("2", "2hr"), ("1", "1hr")]
+        pdf_json["general_info"]["hrs_per_wk_avg"] = _parse_table_block(q20.group(1), rows)
+    q21 = re.search(r"21\.\s+What is your class standing\?\s*\n([\s\S]*?)\n\s*22\.", pdf_text, re.IGNORECASE)
+    if q21:
+        rows = [("Freshman", "freshman"), ("Sophomore", "sophomore"), ("Junior", "junior"), ("Senior", "senior"), ("Graduate Student", "grad")]
+        pdf_json["general_info"]["class_standing_avg"] = _parse_table_block(q21.group(1), rows)
+    q22 = re.search(r"22\.\s+What % of the class meetings have you attended\?\s*\n([\s\S]*?)\n\s*23\.", pdf_text, re.IGNORECASE)
+    if q22:
+        rows = [("90 to 100", "90_to_100"), ("70 to 89", "70_to_89"), ("50 to 69", "50_to_69"), ("30 to 49", "30_to_49"), ("10 to 29", "10_to_29")]
+        pdf_json["general_info"]["attended_avg"] = _parse_table_block(q22.group(1), rows)
+    return pdf_json
+
+def extract_free_response(pdf_text, pdf_path, expected_n=None):
+    likes = _collect_blocks_between(
+        pdf_path,
+        r"^23\.\s*What did you like most about this course\?",
+        r"^\s*24\."
+    )
+    dislikes = _collect_blocks_between(
+        pdf_path,
+        r"^24\.\s*What did you like least about this course\?",
+        r"^\s*25\."
+    )
+
+    if isinstance(expected_n, int) and expected_n > 0:
+        if len(likes) > expected_n:
+            likes = likes[:expected_n-1] + [" ".join(likes[expected_n-1:]).strip()]
+        if len(dislikes) > expected_n:
+            dislikes = dislikes[:expected_n-1] + [" ".join(dislikes[expected_n-1:]).strip()]
+    return likes, dislikes
+
+def _collect_blocks_between(pdf_path, start_pat: str, end_pat: str | None):
+    start_re = re.compile(start_pat, re.M)
+    end_re = re.compile(end_pat, re.M) if end_pat else None
+
+    items: list[str] = []
+    started = False
+    with fitz.open(pdf_path) as doc:
+        for page in doc:
+            for x0, y0, x1, y1, text, *rest in page.get_text("blocks"):
+                if not started:
+                    if start_re.search(text):
+                        started = True
+                    continue
+                if end_re and end_re.search(text):
+                    return [_clean_text(t.replace("\n", " ")) for t in items if t.strip()]
+                if text.strip():
+                    items.append(text)
+    return [_clean_text(t.replace("\n", " ")) for t in items if t.strip()]

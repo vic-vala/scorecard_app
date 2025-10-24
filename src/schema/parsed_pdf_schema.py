@@ -46,7 +46,7 @@ def initialize_pdf_json():
         "general_info":{
             "req_course_avg":{
                 "yes": [None, None],
-                "no_count": [None, None],
+                "no": [None, None],
             },
             "hrs_per_wk_avg":{
                 "16hr": [None, None],
@@ -57,7 +57,7 @@ def initialize_pdf_json():
             },
             "class_standing_avg":{
                 "freshman": [None, None],
-                "sophmore": [None, None],
+                "sophomore": [None, None],
                 "junior": [None, None],
                 "senior": [None, None],
                 "grad": [None, None],
@@ -70,13 +70,7 @@ def initialize_pdf_json():
                 "10_to_29": [None, None],
             },
         },
-        "free_response":{
-            "liked" : [None],
-            "disliked" : [None],
-            "comments" : [None],
-        },
-        "llm_summary": None
-    }
+        "free_response": {"liked": [], "disliked": [], "comments": []}}
 def get_key_map():
     key_map = {}
     part_1_keys = [

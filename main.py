@@ -9,28 +9,30 @@ if __name__ == "__main__":
         paths = config['paths']
         scorecard_settings = config['scorecard_gen_settings']
         data_settings = config['data_vis_settings']
-        print("Config file loaded")
+        include_llm_insights = str(scorecard_settings.get("include_LLM_insights", "false")).lower() == "true"
+        print("✅ Config file loaded")
 
         utils.verify_directories(config['paths'])
 
         # Parse PDFs
-        print("Starting PDF parser")
+        print("📄 Starting PDF parser")
         pdf_parser.run_pdf_parser(paths['pdf_source'], paths['parsed_pdf_dir'])
 
         # Run LLM IO
-        print("Running LLM I/O")
-        pdf_json = utils.get_pdf_json(
-            parsed_pdf_dir=paths['parsed_pdf_dir'],
-            type=data_settings['comparison_type'],
-            department=data_settings['department'],
-            cata_num=data_settings['cata'],
-            sem=data_settings['sem'],
-            year=data_settings['year']
-            )
-        llm_io.run_llm(gguf_path=paths['gguf_path'],
-                       pdf_json= pdf_json,
-                       llm_dir= paths['llm_prompt_dir'],
-                       temp_dir= paths['temp_dir'])
+        if (include_llm_insights):
+            print("🤖 Running LLM I/O")
+            pdf_json = utils.get_pdf_json(
+                parsed_pdf_dir=paths['parsed_pdf_dir'],
+                type=data_settings['comparison_type'],
+                department=data_settings['department'],
+                cata_num=data_settings['cata'],
+                sem=data_settings['sem'],
+                year=data_settings['year']
+                )
+            llm_io.run_llm(gguf_path=paths['gguf_path'],
+                        pdf_json= pdf_json,
+                        llm_dir= paths['llm_prompt_dir'],
+                        temp_dir= paths['temp_dir'])
         # TODO: add cleanup function for temp in utils
         
         # TODO:Generate Visuals
