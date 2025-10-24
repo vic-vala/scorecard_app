@@ -11,6 +11,7 @@ courses_output/
 professors_output/
 raw_pdfs/*.pdf
 excel_data/*.xlsx
+parsed_csvs/*.csv
 temp/*.json
 *.gguf
 

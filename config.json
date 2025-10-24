@@ -10,7 +10,11 @@
         "llm_prompt_dir": "./LLM"
     },
     "scorecard_gen_settings":{
-        "include_LLM_insights": "true"
+        "include_LLM_insights": "false"
+    },
+    "overwrite_settings":{
+        "overwrite_csv": "true",
+        "overwrite_json": "true"
     },
     "data_vis_settings":{
         "comparison_type": "course",

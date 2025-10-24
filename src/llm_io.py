@@ -113,12 +113,12 @@ def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
         pdf_json['llm_summary'] = llm_response
         print("LLM response completed!")
 
-        # Write the complete, .son to the temporary directory
+        # Write the complete, .json to the temporary directory
         os.makedirs(os.path.dirname(temp_dir), exist_ok=True)
         temp_path = f"{temp_dir}/temp.json"
         with open(temp_path, "w", encoding="utf-8") as out_f:
             json.dump(pdf_json, out_f, indent=4)
-            print(f"LLM summary added to JSON and saved to temporary file: {"temp"}")
+            print(f"LLM summary added to JSON and saved to temporary file: %s" % ("temp"))
             
     except Exception as e:
         print(f"Error occured during LLM chat completion")
