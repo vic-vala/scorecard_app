@@ -129,7 +129,9 @@ def save_json(pdf_json, fi,  parsed_base_dir):
     # Save json to the respective path
     with open(course_json_path, 'w') as file:
         json.dump(pdf_json, file, indent=4)
-    print(f"  ✅ Saved json data to {course_json_path}.")
+    with open(professor_json_path, 'w') as file:
+        json.dump(pdf_json, file, indent=4)
+    print(f"  ✅ Saved json data to {course_json_path} and {professor_json_path}.")
 
 def run_pdf_parser(pdf_source, parsed_base_dir):
     try:
