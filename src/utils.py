@@ -2,7 +2,7 @@ import json
 import os
 import sys
 
-CONFIG_PATH = "config.json"
+CONFIG_PATH = "./configuration/config.json"
 
 def load_config(path=CONFIG_PATH):
     if not os.path.exists(path):

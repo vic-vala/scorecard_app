@@ -1,13 +1,13 @@
 {
     "paths":{
-        "pdf_source": "./raw_pdfs",
-        "excel_source": "./excel_data/placeholder_excelname.xlsx",
-        "parsed_pdf_dir": "./parsed_pdfs",
-        "temp_dir": "./temp",
+        "pdf_source": "./input_files/pdfs",
+        "excel_source": "./input_files/excel/placeholder_excelname.xlsx",
+        "parsed_pdf_dir": "./temporary_files/json",
+        "temp_dir": "./temporary_files/images",
         "scorecard_dir": "./scorecards",
         "schema_source": "./src/schema/parsed_pdf_schema.py",
         "gguf_path": "./qwen2.5-7b-instruct-q4_k_m.gguf",
-        "llm_prompt_dir": "./LLM"
+        "llm_prompt_dir": "./configuration/LLM"
     },
     "scorecard_gen_settings":{
         "include_LLM_insights": "false"
