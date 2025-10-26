@@ -111,27 +111,10 @@ def extract_pdf(raw_pdf_path, fi):
     return pdf_json
 
 def save_json(pdf_json, fi,  parsed_base_dir):
-
-    # Create subdirectories for courses and professors in the output directory
-    course_output_dir = os.path.join(parsed_base_dir, "courses_output", f"{fi.department}_{fi.course}")
-    professor_output_dir = os.path.join(parsed_base_dir, "professors_output", f"{fi.professor}")
-    os.makedirs(course_output_dir, exist_ok=True)
-    os.makedirs(professor_output_dir, exist_ok=True)
-
-    # Generate json file name
-    course_json_filename = f"{fi.term}_{fi.year}.json"
-    professor_json_filename = f"{fi.department}_{fi.course}_{fi.term}_{fi.year}.json"
-
-    # Generate json path for respective report
-    course_json_path = os.path.join(course_output_dir, course_json_filename)
-    professor_json_path = os.path.join(professor_output_dir, professor_json_filename)
-    
-    # Save json to the respective path
-    with open(course_json_path, 'w') as file:
+    course_json_filename = f"{fi.department}_{fi.course}_{fi.professor}_{fi.term}_{fi.year}.json"
+    with open(os.path.join(parsed_base_dir, course_json_filename), 'w') as file:
         json.dump(pdf_json, file, indent=4)
-    with open(professor_json_path, 'w') as file:
-        json.dump(pdf_json, file, indent=4)
-    print(f"  ✅ Saved json data to {course_json_path} and {professor_json_path}.")
+    print(f"  ✅ Saved json data to {os.path.join(parsed_base_dir, course_json_filename)}")
 
 def _expected_json_paths(fi, parsed_base_dir):
     course_output_dir = os.path.join(parsed_base_dir, "courses_output", f"{fi.department}_{fi.course}")
