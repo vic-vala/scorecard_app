@@ -18,7 +18,7 @@ if __name__ == "__main__":
         # Parse Excel
         print("📊 Starting Excel parser")
         overwrite_csv = str(config.get("overwrite_settings", {}).get("overwrite_csv", "false")).lower() == "true"
-        excel_parser.run_excel_parser(paths['excel_source'], output_dir="./parsed_csvs", overwrite_csv=overwrite_csv)
+        excel_parser.run_excel_parser(paths['excel_source'], output_dir=paths['csv_dir'], overwrite_csv=overwrite_csv)
 
         # TODO: Clean CSV data
         # This process should include the following at the very least:

@@ -13,7 +13,7 @@ def _bool_from_str(val, *, default=False) -> bool:
             return False
     return bool(default)
 
-def run_excel_parser(excel_path: str, output_dir: str = "./parsed_csvs", *, overwrite_csv: bool = False) -> List[str]:
+def run_excel_parser(excel_path: str, output_dir: str = "./temporary_files/csv", *, overwrite_csv: bool = False) -> List[str]:
     if not excel_path:
         raise ValueError("excel_path is required")
     if not os.path.exists(excel_path):

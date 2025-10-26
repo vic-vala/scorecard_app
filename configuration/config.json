@@ -2,6 +2,7 @@
     "paths":{
         "pdf_source": "./input_files/pdfs",
         "excel_source": "./input_files/excel/placeholder_excelname.xlsx",
+        "csv_dir": "./temporary_files/csv",
         "parsed_pdf_dir": "./temporary_files/json",
         "temp_dir": "./temporary_files/images",
         "scorecard_dir": "./scorecards",
