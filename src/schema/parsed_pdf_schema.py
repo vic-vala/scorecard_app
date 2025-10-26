@@ -13,6 +13,7 @@ def initialize_pdf_json():
             "professor" : None,
             "year" : None,
             "term" : None,
+            "course_number" : None,
             "response_count" : None,
             "total_students" : None,
             "response_rate": None,

@@ -5,22 +5,24 @@ import re
 from src.schema.parsed_pdf_schema import *
 
 class filename_info:
-    def __init__(self, department, course, professor, year, term):
+    def __init__(self, department, course, professor, year, term, course_number):
         self.department = department
         self.course = course
         self.professor = professor
         self.year = year
         self.term = term
+        self.course_number = course_number
 
 def extract_filename(filename):
-    filename_format = re.search(r"(\w{3})\s+(\d{3})\s+(\w+)\s+Instructor\s+Evaluation\s+(\d{4})\s+([a-zA-Z]{4,7})\w*.pdf", filename)
+    filename_format = re.search(r"^(\w{3})\s+(\d{3})\s+(\w+)\s+Instructor\s+Evaluation\s+(\d{4})\s+([A-Za-z]{4,7})(?:[_-](\d{3,}))?\.pdf$",filename)
     if filename_format:
         department = filename_format.group(1).upper()
         course = filename_format.group(2).strip()
         professor = filename_format.group(3).capitalize()
         year = filename_format.group(4).strip()
         term = filename_format.group(5).capitalize()
-        return department, course, professor, year, term
+        course_number = filename_format.group(6).strip()
+        return department, course, professor, year, term, course_number
 
     
 def parse_graph_avgs(pdf_text, pdf_json, key_map):
@@ -69,6 +71,11 @@ def extract_pdf(raw_pdf_path, fi):
             pdf_text += page.get_text()
         pdf.close()
 
+        # Extract course number
+        course_no_match = re.search(r"(?:Course\s*No|Course\s*Number)\s*([A-Za-z0-9\-]+)", pdf_text, re.IGNORECASE)
+        if course_no_match:
+            pdf_json['eval_info']['course_number'] = course_no_match.group(1).strip()
+
         response_rate_match = re.search(r"Response\s+(\d+)/(\d+) \((\d+.\d+\%)\)", pdf_text)
         if response_rate_match:
             response_count = response_rate_match.group(1).strip()
@@ -111,7 +118,7 @@ def extract_pdf(raw_pdf_path, fi):
     return pdf_json
 
 def save_json(pdf_json, fi,  parsed_base_dir):
-    course_json_filename = f"{fi.department}_{fi.course}_{fi.professor}_{fi.term}_{fi.year}.json"
+    course_json_filename = f"{fi.department}_{fi.course}_{fi.professor}_{fi.term}_{fi.year}_{fi.course_number}.json"
     with open(os.path.join(parsed_base_dir, course_json_filename), 'w') as file:
         json.dump(pdf_json, file, indent=4)
     print(f"  ✅ Saved json data to {os.path.join(parsed_base_dir, course_json_filename)}")
@@ -135,8 +142,8 @@ def run_pdf_parser(pdf_source, parsed_base_dir, overwrite_json=False):
                     if not extracted:
                         print(f"  ⛔ Skipping {file}. Invalid filename format")
                         continue
-                    dpt, crs, prof, yr, trm = extracted
-                    fi = filename_info(dpt, crs, prof, yr, trm)
+                    dpt, crs, prof, yr, trm, course_number = extracted
+                    fi = filename_info(dpt, crs, prof, yr, trm, course_number)
 
                     pdf_path = os.path.join(pdf_source, file)
                     course_json_path, professor_json_path = _expected_json_paths(fi, parsed_base_dir)
@@ -147,7 +154,6 @@ def run_pdf_parser(pdf_source, parsed_base_dir, overwrite_json=False):
                         continue
 
                     print(f"  ⏳ Processing {pdf_path}")
-                    print(f"  Department: {fi.department:<10} Course: {fi.course:<10} Professor: {fi.professor:<15} Year: {fi.year:<10} Term: {fi.term:<10}")
                     pdf_json = extract_pdf(pdf_path, fi)
                     if pdf_json:
                         save_json(pdf_json, fi, parsed_base_dir)
