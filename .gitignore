@@ -7,12 +7,8 @@ pvenv/
 pvenv
 
 # Project specific
-courses_output/
-professors_output/
-raw_pdfs/*.pdf
-excel_data/*.xlsx
-parsed_csvs/*.csv
-temp/*.json
+temporary_files/
+input_files/
 *.gguf
 
 .Python
