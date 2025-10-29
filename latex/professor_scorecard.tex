@@ -1,0 +1,448 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=0.5in]{geometry}
+\usepackage{lmodern, microtype, xcolor, graphicx, tabularx, booktabs}
+\usepackage[most]{tcolorbox}
+\usepackage{array}
+\usepackage{xstring}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+\newcolumntype{M}[1]{>{\centering\arraybackslash}m{#1}}
+\newcolumntype{T}[1]{>{\centering\arraybackslash}p{#1}}
+
+% ---------- Palette ----------
+\definecolor{accent}{HTML}{1F4E79}
+\colorlet{pos}{green!60!black}
+\colorlet{neg}{red!70!black}
+\colorlet{neu}{gray!70!black}
+
+% ---------- Instructor fields ----------
+\newcommand{\InstructorName}{John Smith}
+\newcommand{\InstructorTitle}{Senior Lecturer, Computer Science}
+\newcommand{\ReportPeriod}{Academic Year 2024--2025}
+\newcommand{\BaselineText}{}
+
+\newcommand{\PageTitle}{\LARGE\bfseries\textcolor{accent}{\InstructorName}}
+\newcommand{\PageSubtitle}{%
+	\small\textcolor{neu}{\InstructorTitle\ \textbullet\ \ReportPeriod}\\[-1pt]%
+	\footnotesize\textcolor{neu}{\BaselineText}%
+}
+
+% ---------- Course data defaults ----------
+\newcommand{\CourseName}{Course Title}
+\newcommand{\CourseYear}{2025}
+\newcommand{\CourseTerm}{Fall}
+\newcommand{\CourseCode}{00000}
+\newcommand{\CourseNote}{}
+
+\newcommand{\CourseSize}{0}
+\newcommand{\CourseSizeDelta}{0}
+
+\newcommand{\Responses}{0}
+\newcommand{\ResponseRate}{0\%}
+\newcommand{\ResponseDelta}{0}
+\newcommand{\ResponseRateNum}{0}
+
+\newcommand{\AvgPone}{0.00}
+\newcommand{\AvgPoneDelta}{0}
+
+\newcommand{\AvgPtwo}{0.00}
+\newcommand{\AvgPtwoDelta}{0}
+
+\newcommand{\MedianGrade}{--}
+\newcommand{\MedianGradeDelta}{0}
+
+\newcommand{\GPA}{0.00}
+\newcommand{\GPADelta}{0}
+
+\newcommand{\PassNum}{0}
+\newcommand{\PassPct}{0\%}
+\newcommand{\PassDelta}{0}
+\newcommand{\PassPctNum}{0}
+
+\newcommand{\FailNum}{0}
+\newcommand{\FailPct}{0\%}
+\newcommand{\FailDelta}{0}
+
+\newcommand{\DropNum}{0}
+\newcommand{\DropPct}{0\%}
+\newcommand{\DropDelta}{0}
+\newcommand{\DropPctNum}{0}
+
+\newcommand{\WithdrawNum}{0}
+\newcommand{\WithdrawPct}{0\%}
+\newcommand{\WithdrawDelta}{0}
+\newcommand{\WithdrawPctNum}{0}
+
+\newcommand{\CourseSectionSeries}{0/\GPA}
+
+\newcommand{\OutOneName}{Textbook/supplementary material in support of the course.}
+\newcommand{\OutOneScore}{0.00}
+\newcommand{\OutOneDelta}{0}
+
+\newcommand{\OutTwoName}{Value of assigned homework in support of course topics.}
+\newcommand{\OutTwoScore}{0.00}
+\newcommand{\OutTwoDelta}{0}
+
+\newcommand{\OutThreeName}{Value of laboratory assignments/projects in support of the course topics.}
+\newcommand{\OutThreeScore}{0.00}
+\newcommand{\OutThreeDelta}{0}
+
+\newcommand{\CourseCommentTag}{(AI Generated)}
+\newcommand{\CourseCommentSummary}{Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae.}
+
+% ---------- Helpers ----------
+\newcommand{\posD}[1]{\textcolor{pos}{(#1)}}
+\newcommand{\negD}[1]{\textcolor{neg}{(#1)}}
+\newcommand{\neuD}[1]{\textcolor{neu}{(#1)}}
+
+\newcommand{\autoD}[1]{%
+	\IfStrEq{#1}{0}{\neuD{#1}}{%
+	\IfStrEq{#1}{0\%}{\neuD{#1}}{%
+	\IfStrEq{#1}{+0}{\neuD{#1}}{%
+	\IfStrEq{#1}{+0\%}{\neuD{#1}}{%
+	\IfStrEq{#1}{-0}{\neuD{#1}}{%
+	\IfStrEq{#1}{-0\%}{\neuD{#1}}{%
+	\IfBeginWith{#1}{+}{\posD{#1}}{%
+	\IfBeginWith{#1}{-}{\negD{#1}}{\neuD{#1}}%
+	}}}}}}}%
+}
+
+\newcommand{\MetricLeft}[3]{%
+	\textbf{#1:}~#2\if\relax\detokenize{#3}\relax\else~(#3)\fi
+}
+
+\newcommand{\CourseHeader}{\CourseName\ (\CourseYear\ \CourseTerm)\ \CourseCode}
+
+\newcommand{\CoursePlotLabel}{\CourseCode}
+
+\newlength{\DeltaColW}
+\setlength{\DeltaColW}{1.8cm}
+
+\newcommand{\CourseSectionGpaData}{}
+\newcommand{\CourseAvgGpaData}{}
+\newcommand{\CourseTickLabels}{}
+\newcommand{\CourseTickPositions}{}
+
+\makeatletter
+\newcount\CourseIndex
+\newcommand{\ResetCourseChartData}{%
+	\gdef\CourseSectionGpaData{}%
+	\gdef\CourseAvgGpaData{}%
+	\gdef\CourseTickLabels{}%
+	\gdef\CourseTickPositions{}%
+	\CourseIndex=0\relax
+}
+\newcommand{\AddCoursePoint}{%
+	\begingroup
+		\edef\Course@label{\CoursePlotLabel}%
+		\edef\Course@gpa{\GPA}%
+		\edef\Course@index{\the\CourseIndex}%
+		\xdef\CourseAvgGpaData{\CourseAvgGpaData (\Course@index+0.5,\Course@gpa)}%
+		\def\Course@sectionCoords{}%
+		\@for\Course@pair:=\CourseSectionSeries\do{%
+			\expandafter\Course@splitPair\Course@pair\relax
+		}%
+		\xdef\CourseSectionGpaData{\CourseSectionGpaData \Course@sectionCoords}%
+		\ifnum\CourseIndex=0\relax
+			\xdef\CourseTickLabels{\Course@label}%
+			\xdef\CourseTickPositions{\Course@index+0.5}%
+		\else
+			\xdef\CourseTickLabels{\CourseTickLabels,\Course@label}%
+			\xdef\CourseTickPositions{\CourseTickPositions,\Course@index+0.5}%
+		\fi
+		\global\advance\CourseIndex by 1\relax
+	\endgroup
+}
+\newcommand{\Course@splitPair}{}
+\def\Course@splitPair#1/#2\relax{%
+	\pgfmathsetmacro{\Course@x}{\Course@index + 0.5 + (#1)}%
+	\edef\Course@coord{(\Course@x,#2)}%
+	\edef\Course@sectionCoords{\Course@sectionCoords \Course@coord}%
+}
+\makeatother
+
+% ---------- Box style ----------
+\tcbset{
+	enhanced,
+	frame style={draw=black!35, line width=.6pt},
+	interior style={left color=black!2,right color=black!0},
+	arc=2mm,
+	boxsep=5pt,
+	left=8pt,
+	right=8pt,
+	top=8pt,
+	bottom=8pt,
+}
+
+\newcommand{\CourseCard}[1]{%
+	\begingroup
+		#1%
+		\renewcommand{\CoursePlotLabel}{\CourseName}%
+		\AddCoursePoint
+		\begin{tcolorbox}[before skip=6pt, after skip=8pt]
+			{\large\bfseries\textcolor{accent}{\CourseHeader}}\par
+			{\footnotesize\textcolor{neu}{Taught by \InstructorName%
+				\if\relax\detokenize{\CourseNote}\relax\else\ \textbullet\ \CourseNote\fi}}\par
+			\vspace{4pt}
+			{\small
+			\renewcommand{\arraystretch}{1.25}
+			\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+				\begin{tabular}{@{}l >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
+					\MetricLeft{Course Size}{\CourseSize}{} & \autoD{\CourseSizeDelta}\\
+					\MetricLeft{Responses}{\Responses}{\ResponseRate} & \autoD{\ResponseDelta}\\
+					\MetricLeft{Avg Part 1}{\AvgPone}{} & \autoD{\AvgPoneDelta}\\
+					\MetricLeft{Avg Part 2}{\AvgPtwo}{} & \autoD{\AvgPtwoDelta}\\
+					\MetricLeft{Median Grade}{\MedianGrade}{} & \autoD{\MedianGradeDelta}\\
+					\MetricLeft{GPA}{\GPA}{} & \autoD{\GPADelta}\\
+				\end{tabular}
+				&
+				\begin{tabular}{@{}l >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
+					\MetricLeft{Pass}{\PassNum}{\PassPct} & \autoD{\PassDelta}\\
+					\MetricLeft{Fail}{\FailNum}{\FailPct} & \autoD{\FailDelta}\\
+					\MetricLeft{Drop}{\DropNum}{\DropPct} & \autoD{\DropDelta}\\
+					\MetricLeft{Withdraw}{\WithdrawNum}{\WithdrawPct} & \autoD{\WithdrawDelta}\\
+				\end{tabular}
+			\end{tabularx}}
+
+			\vspace{6pt}
+			{\small
+			\textbf{Outliers}\par
+			\renewcommand{\arraystretch}{1.2}
+			\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
+				\MetricLeft{\OutOneName}{\OutOneScore/5}{} & \autoD{\OutOneDelta}\\
+				\MetricLeft{\OutTwoName}{\OutTwoScore/5}{} & \autoD{\OutTwoDelta}\\
+				\MetricLeft{\OutThreeName}{\OutThreeScore/5}{} & \autoD{\OutThreeDelta}\\
+			\end{tabularx}}
+
+			\vspace{6pt}
+			{\small
+			\textbf{Comment Summary}\par
+			\renewcommand{\arraystretch}{1.2}
+			\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
+				\MetricLeft{Responses Count}{\Responses}{} & \autoD{\ResponseDelta}\\
+			\end{tabularx}
+			\vspace{3pt}
+			{\footnotesize\textcolor{neu}{\CourseCommentTag}}\par
+			\noindent\CourseCommentSummary}
+		\end{tcolorbox}
+	\endgroup
+}
+
+\newcommand{\RenderCourseGpaScatter}{%
+	\if\relax\detokenize{\CourseSectionGpaData}\relax
+	\else
+		\begin{tcolorbox}[before skip=10pt]
+			{\large\bfseries\textcolor{accent}{Average GPA by Course}}\par
+			\vspace{6pt}
+			\pgfmathsetmacro{\CourseLastX}{\the\CourseIndex-1}
+			\begin{tikzpicture}
+				\begin{axis}[
+          width=\linewidth,
+          height=2.6in,
+          ymin=3.15, ymax=3.9,
+          ytick distance=0.1,
+          ylabel={Average GPA (4.33 scale)},
+          xlabel={Course},
+          xtick/.expanded=\CourseTickPositions,     
+          xticklabels/.expanded=\CourseTickLabels, 
+          xticklabel style={rotate=45, anchor=east},
+          enlarge x limits=0.25,
+          xmin=0, xmax=\CourseLastX+1,
+          axis lines=left,
+					legend style={at={(0.5,1.05)}, anchor=south, draw=none, fill=white, font=\small}
+        ]
+					\addplot+[only marks, mark=*, mark size=2.2pt, color=accent, mark options={fill=accent!50!white}] coordinates {%
+						\CourseSectionGpaData
+					};
+					\addplot+[only marks, mark=*, mark size=3.3pt, color=orange!80!black, mark options={fill=orange!70!white}, nodes near coords, nodes near coords style={font=\scriptsize, color=orange!80!black}, nodes near coords align={vertical}] coordinates {\CourseAvgGpaData};
+					\legend{Section Scores,Course Average}
+				\end{axis}
+			\end{tikzpicture}
+		\end{tcolorbox}
+	\fi
+}
+
+\pagestyle{empty}
+
+\begin{document}
+
+\ResetCourseChartData
+
+\begin{center}
+	{\PageTitle}\\[2pt]
+	{\PageSubtitle}
+\end{center}
+
+	\CourseCard{
+		\renewcommand{\CourseName}{CSE101}
+		\renewcommand{\CourseYear}{2025}
+		\renewcommand{\CourseTerm}{Fall C}
+		\renewcommand{\CourseCode}{80312}
+		\renewcommand{\CourseNote}{Section 01}
+		\renewcommand{\CourseSize}{50}
+		\renewcommand{\CourseSizeDelta}{-24}
+		\renewcommand{\Responses}{25}
+		\renewcommand{\ResponseRate}{50\%}
+		\renewcommand{\ResponseRateNum}{50}
+		\renewcommand{\ResponseDelta}{-5\%}
+		\renewcommand{\CourseSectionSeries}{-0.20/3.28,-0.05/3.35,0.15/3.30}
+		\renewcommand{\AvgPone}{4.65}
+		\renewcommand{\AvgPoneDelta}{-0.05}
+		\renewcommand{\AvgPtwo}{4.71}
+		\renewcommand{\AvgPtwoDelta}{+0.12}
+		\renewcommand{\MedianGrade}{B+}
+	\renewcommand{\MedianGradeDelta}{+0}
+	\renewcommand{\GPA}{3.32}
+	\renewcommand{\GPADelta}{+0.07}
+	\renewcommand{\PassNum}{45}
+	\renewcommand{\PassPct}{90\%}
+	\renewcommand{\PassDelta}{+5\%}
+	\renewcommand{\FailNum}{2}
+	\renewcommand{\FailPct}{4\%}
+	\renewcommand{\FailDelta}{+5\%}
+	\renewcommand{\DropNum}{1}
+	\renewcommand{\DropPct}{2\%}
+	\renewcommand{\DropDelta}{+5\%}
+		\renewcommand{\WithdrawNum}{2}
+		\renewcommand{\WithdrawPct}{4\%}
+		\renewcommand{\WithdrawDelta}{+5\%}
+		\renewcommand{\OutOneScore}{2.43}
+		\renewcommand{\OutOneDelta}{-2.07}
+	\renewcommand{\OutTwoScore}{2.63}
+		\renewcommand{\OutTwoDelta}{-1.87}
+		\renewcommand{\OutThreeScore}{2.53}
+		\renewcommand{\OutThreeDelta}{-1.97}
+		\renewcommand{\CourseCommentSummary}{Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer ac nibh nec risus suscipit porttitor. Morbi ac nisl id mauris posuere elementum.}
+	}
+
+	\CourseCard{
+		\renewcommand{\CourseName}{CSE241}
+		\renewcommand{\CourseYear}{2025}
+		\renewcommand{\CourseTerm}{Spring B}
+		\renewcommand{\CourseCode}{81234}
+		\renewcommand{\CourseNote}{Section 02}
+		\renewcommand{\CourseSize}{38}
+		\renewcommand{\CourseSizeDelta}{+4}
+		\renewcommand{\Responses}{30}
+		\renewcommand{\ResponseRate}{79\%}
+		\renewcommand{\ResponseRateNum}{79}
+		\renewcommand{\ResponseDelta}{+12\%}
+		\renewcommand{\CourseSectionSeries}{-0.25/3.58,-0.05/3.62,0.10/3.55,0.25/3.49}
+		\renewcommand{\AvgPone}{4.82}
+		\renewcommand{\AvgPoneDelta}{+0.21}
+		\renewcommand{\AvgPtwo}{4.68}
+		\renewcommand{\AvgPtwoDelta}{+0.09}
+		\renewcommand{\MedianGrade}{A-}
+	\renewcommand{\MedianGradeDelta}{+1}
+	\renewcommand{\GPA}{3.56}
+	\renewcommand{\GPADelta}{+0.18}
+	\renewcommand{\PassNum}{36}
+	\renewcommand{\PassPct}{95\%}
+	\renewcommand{\PassDelta}{+3\%}
+	\renewcommand{\FailNum}{1}
+	\renewcommand{\FailPct}{3\%}
+	\renewcommand{\FailDelta}{-2\%}
+	\renewcommand{\DropNum}{0}
+	\renewcommand{\DropPct}{0\%}
+	\renewcommand{\DropDelta}{-3\%}
+	\renewcommand{\WithdrawNum}{1}
+	\renewcommand{\WithdrawPct}{3\%}
+	\renewcommand{\WithdrawDelta}{-1\%}
+	\renewcommand{\OutOneScore}{3.92}
+	\renewcommand{\OutOneDelta}{-0.58}
+	\renewcommand{\OutTwoScore}{4.12}
+		\renewcommand{\OutTwoDelta}{-0.32}
+		\renewcommand{\OutThreeScore}{4.25}
+		\renewcommand{\OutThreeDelta}{-0.25}
+		\renewcommand{\CourseCommentSummary}{Praesent nec elit vel purus hendrerit maximus. Sed vitae libero a est bibendum auctor non id justo. Donec congue tristique dui, sed congue arcu sollicitudin at.}
+	}
+
+	\CourseCard{
+		\renewcommand{\CourseName}{CSE305}
+		\renewcommand{\CourseYear}{2024}
+		\renewcommand{\CourseTerm}{Fall A}
+		\renewcommand{\CourseCode}{84567}
+		\renewcommand{\CourseNote}{Algorithms Honors}
+		\renewcommand{\CourseSize}{42}
+		\renewcommand{\CourseSizeDelta}{+6}
+		\renewcommand{\Responses}{31}
+		\renewcommand{\ResponseRate}{74\%}
+		\renewcommand{\ResponseRateNum}{74}
+		\renewcommand{\ResponseDelta}{+8\%}
+		\renewcommand{\CourseSectionSeries}{-0.20/3.38,0.00/3.47,0.20/3.52}
+		\renewcommand{\AvgPone}{4.48}
+		\renewcommand{\AvgPoneDelta}{+0.15}
+		\renewcommand{\AvgPtwo}{4.41}
+		\renewcommand{\AvgPtwoDelta}{+0.05}
+		\renewcommand{\MedianGrade}{A-}
+		\renewcommand{\MedianGradeDelta}{+1}
+		\renewcommand{\GPA}{3.44}
+		\renewcommand{\GPADelta}{+0.11}
+		\renewcommand{\PassNum}{39}
+		\renewcommand{\PassPct}{93\%}
+		\renewcommand{\PassDelta}{+4\%}
+		\renewcommand{\FailNum}{1}
+		\renewcommand{\FailPct}{2\%}
+		\renewcommand{\FailDelta}{0\%}
+		\renewcommand{\DropNum}{1}
+		\renewcommand{\DropPct}{2\%}
+		\renewcommand{\DropDelta}{-1\%}
+		\renewcommand{\WithdrawNum}{1}
+		\renewcommand{\WithdrawPct}{2\%}
+		\renewcommand{\WithdrawDelta}{-1\%}
+		\renewcommand{\OutOneScore}{3.85}
+		\renewcommand{\OutOneDelta}{-0.45}
+		\renewcommand{\OutTwoScore}{3.72}
+		\renewcommand{\OutTwoDelta}{-0.68}
+		\renewcommand{\OutThreeScore}{4.05}
+		\renewcommand{\OutThreeDelta}{-0.35}
+		\renewcommand{\CourseCommentSummary}{Students highlighted the tighter pacing and appreciated the collaborative problem sessions; several requested earlier release of solution walkthroughs.}
+	}
+
+	\CourseCard{
+		\renewcommand{\CourseName}{CSE411}
+		\renewcommand{\CourseYear}{2024}
+		\renewcommand{\CourseTerm}{Summer}
+		\renewcommand{\CourseCode}{89210}
+		\renewcommand{\CourseNote}{Graduate Seminar}
+		\renewcommand{\CourseSize}{28}
+		\renewcommand{\CourseSizeDelta}{+2}
+		\renewcommand{\Responses}{18}
+		\renewcommand{\ResponseRate}{64\%}
+		\renewcommand{\ResponseRateNum}{64}
+		\renewcommand{\ResponseDelta}{+9\%}
+		\renewcommand{\CourseSectionSeries}{-0.25/3.74,-0.05/3.79,0.10/3.83,0.25/3.77}
+		\renewcommand{\AvgPone}{4.92}
+		\renewcommand{\AvgPoneDelta}{+0.32}
+		\renewcommand{\AvgPtwo}{4.88}
+		\renewcommand{\AvgPtwoDelta}{+0.28}
+		\renewcommand{\MedianGrade}{A}
+		\renewcommand{\MedianGradeDelta}{+1}
+		\renewcommand{\GPA}{3.78}
+		\renewcommand{\GPADelta}{+0.26}
+		\renewcommand{\PassNum}{27}
+		\renewcommand{\PassPct}{96\%}
+		\renewcommand{\PassDelta}{+2\%}
+		\renewcommand{\FailNum}{0}
+		\renewcommand{\FailPct}{0\%}
+		\renewcommand{\FailDelta}{-1\%}
+		\renewcommand{\DropNum}{0}
+		\renewcommand{\DropPct}{0\%}
+		\renewcommand{\DropDelta}{-2\%}
+		\renewcommand{\WithdrawNum}{1}
+		\renewcommand{\WithdrawPct}{4\%}
+		\renewcommand{\WithdrawDelta}{+0\%}
+		\renewcommand{\OutOneScore}{4.65}
+		\renewcommand{\OutOneDelta}{+0.15}
+		\renewcommand{\OutTwoScore}{4.52}
+		\renewcommand{\OutTwoDelta}{+0.08}
+		\renewcommand{\OutThreeScore}{4.78}
+		\renewcommand{\OutThreeDelta}{+0.28}
+		\renewcommand{\CourseCommentSummary}{Participants praised the practitioner guests and mentorship pairing; a few noted the project rubric could clarify expectations earlier.}
+	}
+
+\RenderCourseGpaScatter
+
+\end{document}
