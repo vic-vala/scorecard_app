@@ -1,6 +1,7 @@
 import json
 import os
 from src import pdf_parser, utils, data_vis, llm_io, excel_parser
+from src.render_scorecard import render_scorecard
 
 if __name__ == "__main__":
     try:
@@ -54,6 +55,14 @@ if __name__ == "__main__":
 
         # TODO: Assemble & Save Scorecard PDF
 
+        # Render professor scorecard using LaTeX template
+        try:
+            pdf_path = render_scorecard({}, "professor_scorecard")
+            print(f"📄 Rendered professor scorecard to {pdf_path}")
+        except FileNotFoundError:
+            print("⚠️ Skipping LaTeX rendering: xelatex not found on PATH")
+        except Exception as e:
+            print(f"⚠️ Could not render professor scorecard: {e}")
 
     except Exception as e:
         print(f"An error has occured in main: {e}")
