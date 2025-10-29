@@ -7,7 +7,7 @@
         "temp_dir": "./temporary_files/images",
         "scorecard_dir": "./scorecards",
         "schema_source": "./src/schema/parsed_pdf_schema.py",
-        "gguf_path": "./qwen2.5-7b-instruct-q4_k_m.gguf",
+        "gguf_path": "./configuration/LLM/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
         "llm_prompt_dir": "./configuration/LLM"
     },
     "scorecard_gen_settings":{
