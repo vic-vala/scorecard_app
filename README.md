@@ -16,6 +16,7 @@ cmd
 ```py
 pip install -r requirements.txt
 ```
+- XeLaTeX (for PDF output): install texlive-xetex on Ubuntu/WSL or MiKTeX/TeX Live on Windows so xelatex is on PATH.
 ### Setting up
 1. Place PDFs in the ***raw_pdfs*** folder
 2. Place excel data in the ***excel_data*** folder
