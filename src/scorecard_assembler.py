@@ -8,21 +8,28 @@ from pylatex import(
     Package,
     Section,
 )
+from src import latex_sections
 
 # Organizing all the data necessary for automating the latex, much cleaner containing
 #   everything in one class.
 class _ScorecardDoc:
 
-    def __init__(self, pdf_json, output_filename):
+    def __init__(self, pdf_json, data_visx, output_filename):
         self.doc = None
         self.pdf_json = pdf_json
+        self.data_visx = data_visx
         self.output_filename = output_filename
+        self.show_hdr_overview = False
+        self.show_hdr_eval = False
+        self.show_hdr_title = True
+        self.baseline_text = "Compared to baseline: Average of all CSE100 courses"
 
         # Driver function, setting up the documentclass, packages, preamble
     def doc_setup(self):
         self.doc = Document(documentclass='article', document_options=['11pt'])
         self._add_packages()
         self._add_preamble()
+        self.build_sections()
         return self.doc
 
     def _add_packages(self):
@@ -43,7 +50,7 @@ class _ScorecardDoc:
         for package, options in packages:
             self.doc.packages.append(Package(package, options=options))
 
-    # Color palette, commands, & other macros
+    # Color palette, commands, everything before \begin{document}
     def _add_preamble(self):
 
         # Custom columns
@@ -67,7 +74,21 @@ class _ScorecardDoc:
         self._add_overview_fields()
         self._add_evaluation_metrics_fields()
         self._add_summary_fields()
+        self._add_grade_distr_fields()
+        
+        # Helper commands
+        self._define_helper_commands()
 
+        # Layout lengths
+        self._define_layout_lengths()
+
+        # Header toggles
+        self._define_header_toggles()
+
+        # TCB styling
+        self._define_tcb_style()
+
+        # Page style
         self.doc.preamble.append(Command('pagestyle', 'empty'))
 
     # Assigning values to the fields in the overview section
@@ -108,7 +129,7 @@ class _ScorecardDoc:
 
         # TODO: Calculating the delta will involve calculating the avg response rate
         #   across all .json 'response_rate' key values. Placeholder for now
-        response_delta = f"-10\\%"
+        response_delta = f"-10%"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\ResponseDelta'), response_delta]))
 
         avg_p1 = f"{self.pdf_json['eval_info']['avg1']}"
@@ -146,29 +167,29 @@ class _ScorecardDoc:
         # TODO: Fill in data frame info for passing, failing, drops, & withdrawals
         #   and compute their respective deltas using a baseline. Place holders for now
         pass_count = 41
-        pass_pct = f"88\\%"
-        pass_delta = f"-3\\%"
+        pass_pct = f"88%"
+        pass_delta = f"-3%"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\PassNum'), str(pass_count)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\PassPct'), pass_pct]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\PassDelta'), pass_delta]))
         
         fail_count = 8
-        fail_pct = f"8\\%"
-        fail_delta = f"+2\\%"
+        fail_pct = f"8%"
+        fail_delta = f"+2%"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\FailNum'), str(fail_count)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\FailPct'), fail_pct]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\FailDelta'), fail_delta]))
         
         drop_count = 2
-        drop_pct = f"2\\%"
-        drop_delta = f"+2\\%"
+        drop_pct = f"2%"
+        drop_delta = f"+2%"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\DropNum'), str(drop_count)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\DropPct'), drop_pct]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\DropDelta'), drop_delta]))
 
         withdraw_count = 2
-        withdraw_pct = f"2\\%"
-        withdraw_delta = f"+2\\%"
+        withdraw_pct = f"2%"
+        withdraw_delta = f"+2%"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\WithdrawNum'), str(withdraw_count)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\WithdrawPct'), withdraw_pct]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\WithdrawDelta'), withdraw_delta]))
@@ -203,24 +224,164 @@ class _ScorecardDoc:
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutThreeScore'), str(outlier3_val)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutThreeDelta'), str(outlier3_delta)]))
     
+    # Assigning values used in LLM comment summary section
     def _add_summary_fields(self):
 
         # TODO: Modify pdf_json schema to also have a count value for the comments maybe
+        #   or organized txt file, json might be easier
         comment_count = 4
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CommentCount'), str(comment_count)]))
 
         llm_summary = f"Placeholder LLM summary. Pending latest LLM integration."
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\LLMSummary'), llm_summary]))
+    
+    # Assigning values used in grade distribution section
+    def _add_grade_distr_fields(self):
 
-def assemble_scorecard(pdf_json, data_visx, output_path):
+        # TODO: Once we are able to dynamically select the CSV, we can update all these
+        #   variables with self.csv[{filter}], for now just placeholders
+        grade_a_count = str(10)
+        grade_a_pct = f"10%"
+        grade_a_delta = f"-2%"
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeACount'), grade_a_count]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeAPct'), grade_a_pct]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeADelta'), grade_a_delta]))
+        
+        grade_b_count = str(46)
+        grade_b_pct = f"72%"
+        grade_b_delta = f"+1%"
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBCount'), grade_b_count]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBPct'), grade_b_pct]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBDelta'), grade_b_delta]))
+        
+        grade_c_count = str(17)
+        grade_c_pct = f"14%"
+        grade_c_delta = f"-1%"
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCCount'), grade_c_count]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCPct'), grade_c_pct]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCDelta'), grade_c_delta]))
+        
+        grade_d_count = str(4)
+        grade_d_pct = f"2%"
+        grade_d_delta = f"+0%"
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDCount'), grade_d_count]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDPct'), grade_d_pct]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDDelta'), grade_d_delta]))
+        
+        grade_f_count = str(4)
+        grade_f_pct = f"2%"
+        grade_f_delta = f"+1%"
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeFCount'), grade_f_count]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeFPct'), grade_f_pct]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeFDelta'), grade_f_delta]))
+
+        # TODO: Clearly define what we are trying to show here for the quarters
+        q1 = str(4)
+        q2 = str(4)
+        q3 = str(4)
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\Qone'), q1]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\Qtwo'), q2]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\Qthree'), q3]))
+        
+        q1_delta = str(-2)
+        q2_delta = str(-2)
+        q3_delta = str(-2)
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\QoneDelta'), q1_delta]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\QtwoDelta'), q2_delta]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\QthreeDelta'), q3_delta]))
+
+    def _define_helper_commands(self):
+        # Retrieve helper commands
+        self.doc.preamble.append(NoEscape(latex_sections.get_helper_commands_template()))
+    
+    def _define_layout_lengths(self):
+        right_col_width = "2.2in"
+        self.doc.preamble.append(NoEscape(r'\newlength{\RightColW}'))
+        self.doc.preamble.append(NoEscape(f'\\setlength{{\\RightColW}}{{{right_col_width}}}'))
+        
+        grade_vis_height = "2.2in"
+        self.doc.preamble.append(NoEscape(r'\newlength{\GradeVisH}'))
+        self.doc.preamble.append(NoEscape(f'\\setlength{{\\GradeVisH}}{{{grade_vis_height}}}'))
+        
+        delta_col_width = "1.8cm"
+        self.doc.preamble.append(NoEscape(r'\newlength{\DeltaColW}'))
+        self.doc.preamble.append(NoEscape(f'\\setlength{{\\DeltaColW}}{{{delta_col_width}}}'))
+    
+    def _define_header_toggles(self):
+        # Define boolean toggles for headers
+        self.doc.preamble.append(NoEscape(r'\newif\ifShowHdrOverview'))
+        self.doc.preamble.append(NoEscape(r'\newif\ifShowHdrEval'))
+        self.doc.preamble.append(NoEscape(r'\newif\ifShowHdrTitle'))
+        
+        overview_val = "true" if self.show_hdr_overview else "false"
+        eval_val = "true" if self.show_hdr_eval else "false"
+        title_val = "true" if self.show_hdr_title else "false"
+        
+        self.doc.preamble.append(NoEscape(f'\\ShowHdrOverview{overview_val}'))
+        self.doc.preamble.append(NoEscape(f'\\ShowHdrEval{eval_val}'))
+        self.doc.preamble.append(NoEscape(f'\\ShowHdrTitle{title_val}'))
+    
+    def _define_tcb_style(self):
+        #Define tcolorbox styling
+        self.doc.preamble.append(NoEscape(latex_sections.get_box_style_template()))
+
+    def build_sections(self):
+        """
+        Build the document content (all sections)
+        
+        Call order:
+        1. Page title
+        2. Overview section
+        3. Evaluation Metrics section
+        4. Comment Summary section
+        5. Grade Distribution section
+        """
+        self._add_page_title()
+        self._add_overview_section()
+        self._add_evaluation_section()
+        self._add_comment_section()
+        self._add_grade_distribution_section()
+    
+    def _add_page_title(self):
+        """Add the page-level title"""
+        self.doc.append(NoEscape(latex_sections.get_page_title_template()))
+    
+    def _add_overview_section(self):
+        """Add the Overview tcolorbox section"""
+        self.doc.append(NoEscape(latex_sections.get_overview_section_template()))
+    
+    def _add_evaluation_section(self):
+        """Add the Evaluation Metrics tcolorbox section"""
+        self.doc.append(NoEscape(latex_sections.get_evaluation_section_template()))
+    
+    def _add_comment_section(self):
+        """Add the Comment Summary tcolorbox section"""
+        self.doc.append(NoEscape(latex_sections.get_comment_section_template()))
+    
+    def _add_grade_distribution_section(self):
+        """Add the Grade Distribution tcolorbox section"""
+        template = latex_sections.get_grade_distribution_section_template(
+            self.data_visx
+        )
+        self.doc.append(NoEscape(template))
+     
+
+def assemble_scorecard(pdf_json, data_visx, tex_output_path, scorecard_output_path):
         
     # Generate the latex doc
-    latex_doc = _ScorecardDoc(pdf_json=pdf_json, output_filename="test")
+    latex_doc = _ScorecardDoc(pdf_json=pdf_json, data_visx=data_visx, output_filename="test")
     latex_doc.doc_setup()
 
     # Save the latex doc to the temp folder in its subdirectory
-    full_output_path = os.path.join(output_path, latex_doc.output_filename)
+    full_output_path = os.path.join(tex_output_path, latex_doc.output_filename)
     latex_doc.doc.generate_tex(full_output_path)
-
     print(f"📝✅ Saved LaTeX to {full_output_path}")
+
+    # Save the latex as a pdf now
+    pdf_filename = latex_doc.output_filename
+    full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
+    latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
+    print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
+
+
 
