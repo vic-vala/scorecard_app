@@ -17,8 +17,8 @@ cmd
 pip install -r requirements.txt
 ```
 ### Setting up
-1. Place PDFs in the ***raw_pdfs*** folder
-2. Place excel data in the ***excel_data*** folder
+1. Place PDFs in the ***./input_files/pdfs*** folder
+2. Place excel data in the ***./input_files/excel*** folder
     - make sure the excel file name matches the path in ***config.json/paths/excel_source***
     - i'd reccomend keeping the name as '**placeholder_excelname.xlsx**' or something discrete/general
 3. Ensure that the path to the **.gguf** is correctly set in ***config.json/paths/gguf_path*** don't include any PII in the path

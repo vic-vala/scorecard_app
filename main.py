@@ -1,6 +1,6 @@
 import json
 import os
-from src import pdf_parser, utils, data_vis, llm_io, excel_parser
+from src import pdf_parser, utils, data_vis, llm_io, excel_parser, scorecard_assembler
 
 if __name__ == "__main__":
     try:
@@ -8,7 +8,7 @@ if __name__ == "__main__":
         config = utils.load_config()
         paths = config['paths']
         scorecard_settings = config['scorecard_gen_settings']
-        data_settings = config['data_vis_settings']
+        data_vis_settings = config['data_vis_settings']
         include_llm_insights = str(scorecard_settings.get("include_LLM_insights", "false")).lower() == "true"
         overwrite_json = str(config.get("overwrite_settings", {}).get("overwrite_json", "false")).lower() == "true"
         print("✅ Config file loaded")
@@ -35,25 +35,24 @@ if __name__ == "__main__":
         # Run LLM IO
         if (include_llm_insights):
             print("🤖 Running LLM I/O")
-            pdf_json = utils.get_pdf_json(
-                parsed_pdf_dir=paths['parsed_pdf_dir'],
-                type=data_settings['comparison_type'],
-                department=data_settings['department'],
-                cata_num=data_settings['cata'],
-                sem=data_settings['sem'],
-                year=data_settings['year']
-                )
+            pdf_json = utils.get_pdf_json(paths['parsed_pdf_dir'], data_vis_settings)
             llm_io.run_llm(gguf_path=paths['gguf_path'],
                         pdf_json= pdf_json,
                         llm_dir= paths['llm_prompt_dir'],
                         temp_dir= paths['temp_dir'])
-        # TODO: add cleanup function for temp in utils
-        
-        # TODO:Generate Visuals
-        data_vis.generate_data_visualization(data_settings, paths['excel_source'])
+        # TODO: Generate Visuals -- Waiting on CSV changes to integrate
+        #data_vis.generate_data_visualization(data_settings, paths['excel_source'])
 
         # TODO: Assemble & Save Scorecard PDF
+        print("📝 Generating LaTeX")
+        # Just using the json to populate the latex for now, we will need to include
+        #   a csv at some point. Also will want to pivot away from using data vis 
+        #       settings from config. Just using for now to illustrate dynamic latex 
+        #           generation
+        pdf_json_2 = utils.get_pdf_json(paths['parsed_pdf_dir'], data_vis_settings) 
 
+        scorecard_assembler.assemble_scorecard(pdf_json_2, "", output_path=paths['tex_dir'])
 
+        # TODO: add cleanup function for temp in utils
     except Exception as e:
         print(f"An error has occured in main: {e}")

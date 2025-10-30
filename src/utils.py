@@ -34,30 +34,12 @@ def verify_directories(paths):
 
     print("Directory initialization complete\n")
 
-# TODO: Handle code map conversion
-def get_pdf_json(parsed_pdf_dir, type, department, cata_num, sem, year, prof_name=""):
-    base_dir = None
-    sub_dir = None
+def get_pdf_json(parsed_pdf_dir, s):
     json_filename = None
 
-    if type.lower() == "course":
-        base_dir = "courses_output"
-        sub_dir = f"{department}_{cata_num}"
-        json_filename = f"{sem}_{year}.json"
-    elif type.lower() == "professor":
-        base_dir = "professors_output"
-        sub_dir = f"{prof_name}"
-        json_filename = f"{department}_{cata_num}_{sem}_{year}.json"
-    else:
-        print(f"Error: Invalid type '{type}'. Must be 'course' or 'professor'.", file=sys.stderr)
-        return None
+    json_filename = f"{s['department']}_{s['cata']}_{s['professor1']}_{s['sem']}_{s['year']}_{s['course_num']}.json"
     
-    report_path = os.path.join(
-        parsed_pdf_dir,
-        base_dir,
-        sub_dir,
-        json_filename
-    )
+    report_path = os.path.join(parsed_pdf_dir, json_filename)
 
     # 3. Attempt to load the file
     try:
@@ -66,7 +48,7 @@ def get_pdf_json(parsed_pdf_dir, type, department, cata_num, sem, year, prof_nam
             print(f"Successfully loaded report: {report_path}")
             return pdf_json
     except FileNotFoundError:
-        print(f"Error: json file not found at: {report_path}", file=sys.stderr)
+        print(f"Error: json file not found at: {report_path}.\nTry changing 'professor1' in the config file.", file=sys.stderr)
         return None
     except json.JSONDecodeError as e:
         print(f"Error: Failed to decode json from {report_path}. Details: {e}", file=sys.stderr)

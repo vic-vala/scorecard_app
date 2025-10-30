@@ -5,11 +5,14 @@ __pycache__/
 # Virtual environment
 pvenv/
 pvenv
+venv/
+venv
 
 # Project specific
 temporary_files/
 input_files/
 *.gguf
+./*.tex
 
 .Python
 build/
