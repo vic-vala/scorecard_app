@@ -50,8 +50,13 @@ if __name__ == "__main__":
         #       settings from config. Just using for now to illustrate dynamic latex 
         #           generation
         pdf_json_2 = utils.get_pdf_json(paths['parsed_pdf_dir'], data_vis_settings) 
-
-        scorecard_assembler.assemble_scorecard(pdf_json_2, "", output_path=paths['tex_dir'])
+        test_image = "./temporary_files/images/cat_driving_car.jpg"
+        scorecard_assembler.assemble_scorecard(
+            pdf_json_2,
+            test_image,
+            tex_output_path=paths['tex_dir'],
+            scorecard_output_path=paths['scorecard_dir']
+            )
 
         # TODO: add cleanup function for temp in utils
     except Exception as e:
