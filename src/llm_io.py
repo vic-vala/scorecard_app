@@ -42,13 +42,13 @@ def load_user_prompt(llm_dir, pdf_json):
     
     user_prompt += "\n\nFREE RESPONSE COMMENTS\n"
 
-    # Likes TODO: Extract like comments
+    # Likes 
     user_prompt += "\nWhat students liked:"
     liked_comments = pdf_json.get('free_response', {}).get('liked', {})
     for comment in liked_comments:
         user_prompt += f"\n- {comment}"
 
-    # Dislikes TODO: Extract dislike comments
+    # Dislikes 
     user_prompt += "\n\nWhat students disliked:"
     disliked_comments = pdf_json.get('free_response', {}).get('disliked', {})
     for comment in disliked_comments:
