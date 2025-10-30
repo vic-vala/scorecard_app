@@ -3,6 +3,7 @@
         "pdf_source": "./input_files/pdfs",
         "excel_source": "./input_files/excel/placeholder_excelname.xlsx",
         "csv_dir": "./temporary_files/csv",
+        "tex_dir": "./temporary_files/tex",
         "parsed_pdf_dir": "./temporary_files/json",
         "temp_dir": "./temporary_files/images",
         "scorecard_dir": "./scorecards",
@@ -18,13 +19,14 @@
         "overwrite_json": "true"
     },
     "data_vis_settings":{
-        "comparison_type": "course",
+        "comparison_type": "Professor_vs_Avg",
         "professor1": "1,Professor",
         "professor2": "2,Professor",
         "department": "CSE",
         "code_mapping": "2241",
         "cata":"470",
         "sem": "Fall",
-        "year": "2011"
+        "year": "2011",
+        "course_num": "71428"
     }
 }
