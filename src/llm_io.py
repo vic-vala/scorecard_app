@@ -9,10 +9,11 @@ N_THREADS    = int(os.environ.get("N_THREADS", max(1, (os.cpu_count() or 2) - 1)
 N_GPU_LAYERS = int(os.environ.get("N_GPU_LAYERS", 0)) # All CPU for now?
 
 # LLM Parameters
-MAX_TOKENS = min(int(os.environ.get("MAX_TOKENS", 500)), 500)
-TEMP       = float(os.environ.get("LLM_TEMP", "0.7"))
-TOP_P      = float(os.environ.get("TOP_P", 0.95))
-REPEAT_PEN = float(os.environ.get("REPEAT_PEN", 1.1))
+MAX_TOKENS = min(int(os.environ.get("MAX_TOKENS", 4096)), 4096)
+TEMP       = float(os.environ.get("LLM_TEMP", "0.4"))
+TOP_P      = float(os.environ.get("TOP_P", 0.7))
+REPEAT_PEN = float(os.environ.get("REPEAT_PEN", 1.3))
+MIN_P      = float(os.environ.get("MIN_P", 0.05))
 
 
 def load_system_prompt(llm_dir):
@@ -41,9 +42,17 @@ def load_user_prompt(llm_dir, pdf_json):
     
     user_prompt += "\n\nFREE RESPONSE COMMENTS\n"
 
-    # Likes TODO: Extract like comments
+    # Likes 
+    user_prompt += "\nWhat students liked:"
+    liked_comments = pdf_json.get('free_response', {}).get('liked', {})
+    for comment in liked_comments:
+        user_prompt += f"\n- {comment}"
 
-    # Dislikes TODO: Extract dislike comments
+    # Dislikes 
+    user_prompt += "\n\nWhat students disliked:"
+    disliked_comments = pdf_json.get('free_response', {}).get('disliked', {})
+    for comment in disliked_comments:
+        user_prompt += f"\n- {comment}"
 
     # Comments
     user_prompt += "\nComments"
@@ -74,8 +83,9 @@ def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
             n_ctx=N_CTX,
             n_threads=N_THREADS,
             n_gpu_layers=N_GPU_LAYERS,
-            chat_format="qwen",
+            chat_format="llama-3",
             verbose=False,
+            min_p = MIN_P,
         )
     except Exception as e:
             print(f"Error running instantiation the model:{e}")
@@ -99,6 +109,7 @@ def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
             temperature=TEMP,
             top_p=TOP_P,
             repeat_penalty=REPEAT_PEN,
+            min_p=MIN_P,
             stream=True,
         )
         print("Generating LLM response...")
@@ -122,6 +133,3 @@ def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
             
     except Exception as e:
         print(f"Error occured during LLM chat completion")
-    
-    
-
