@@ -74,7 +74,7 @@ def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
             n_ctx=N_CTX,
             n_threads=N_THREADS,
             n_gpu_layers=N_GPU_LAYERS,
-            chat_format="llama3",
+            chat_format="llama-3",
             verbose=False,
         )
     except Exception as e:
