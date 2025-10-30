@@ -74,7 +74,7 @@ def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
             n_ctx=N_CTX,
             n_threads=N_THREADS,
             n_gpu_layers=N_GPU_LAYERS,
-            chat_format="qwen",
+            chat_format="llama3",
             verbose=False,
         )
     except Exception as e:
@@ -122,6 +122,3 @@ def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
             
     except Exception as e:
         print(f"Error occured during LLM chat completion")
-    
-    
-
