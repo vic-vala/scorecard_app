@@ -1,5 +1,5 @@
 {
-    "paths":{
+    "paths": {
         "pdf_source": "./input_files/pdfs",
         "excel_source": "./input_files/excel/placeholder_excelname.xlsx",
         "csv_dir": "./temporary_files/csv",
@@ -11,20 +11,20 @@
         "gguf_path": "./configuration/LLM/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
         "llm_prompt_dir": "./configuration/LLM"
     },
-    "scorecard_gen_settings":{
+    "scorecard_gen_settings": {
         "include_LLM_insights": "false"
     },
-    "overwrite_settings":{
+    "overwrite_settings": {
         "overwrite_csv": "true",
         "overwrite_json": "true"
     },
-    "data_vis_settings":{
+    "data_vis_settings": {
         "comparison_type": "Professor_vs_Avg",
         "professor1": "1,Professor",
         "professor2": "2,Professor",
         "department": "CSE",
         "code_mapping": "2241",
-        "cata":"470",
+        "cata": "470",
         "sem": "Fall",
         "year": "2011",
         "course_num": "71428"
