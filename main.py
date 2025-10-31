@@ -1,9 +1,12 @@
 import json
 import os
-from src import pdf_parser, utils, data_vis, llm_io, excel_parser, scorecard_assembler, csv_cleaner
+from src import pdf_parser, utils, data_vis, llm_io, excel_parser, scorecard_assembler, csv_cleaner, config_gui
 
 if __name__ == "__main__":
     try:
+        CONFIG_PATH = utils.CONFIG_PATH
+        config_gui.open_config_editor(CONFIG_PATH)
+
         # Load config file
         config = utils.load_config()
         paths = config['paths']
