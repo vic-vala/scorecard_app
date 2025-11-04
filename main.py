@@ -1,9 +1,12 @@
 import json
 import os
-from src import pdf_parser, utils, data_vis, llm_io, excel_parser, scorecard_assembler
+from src import pdf_parser, utils, data_vis, llm_io, excel_parser, scorecard_assembler, csv_cleaner, config_gui
 
 if __name__ == "__main__":
     try:
+        CONFIG_PATH = utils.CONFIG_PATH
+        config_gui.open_config_editor(CONFIG_PATH)
+
         # Load config file
         config = utils.load_config()
         paths = config['paths']
@@ -18,15 +21,11 @@ if __name__ == "__main__":
         # Parse Excel
         print("📊 Starting Excel parser")
         overwrite_csv = str(config.get("overwrite_settings", {}).get("overwrite_csv", "false")).lower() == "true"
-        excel_parser.run_excel_parser(paths['excel_source'], output_dir=paths['csv_dir'], overwrite_csv=overwrite_csv)
+        csv_path = excel_parser.run_excel_parser(paths['excel_source'], output_dir=paths['csv_dir'], overwrite_csv=overwrite_csv)
 
-        # TODO: Clean CSV data
-        # This process should include the following at the very least:
-        #   1. Scrubbing (or handling) of "Total" rows
-        #   2. Semester/Term columns
-        #   3. First/last name columns
-        #   4. Handling of empty rows expecting numbers (replace with 0)
-        #   5. Finding any rows that are still invalid after all of that (strings where ints are expected, etc.)
+        # Clean CSV data
+        if (overwrite_csv):
+            csv_cleaner.clean_csv(csv_path[0])
 
         # Parse PDFs
         print("📄 Starting PDF parser")
@@ -40,6 +39,7 @@ if __name__ == "__main__":
                         pdf_json= pdf_json,
                         llm_dir= paths['llm_prompt_dir'],
                         temp_dir= paths['temp_dir'])
+        
         # TODO: Generate Visuals -- Waiting on CSV changes to integrate
         #data_vis.generate_data_visualization(data_settings, paths['excel_source'])
 
