@@ -22,8 +22,15 @@ PRETTY_NAME_MAP = {
     "gguf_path": "GGUF Model Path",
 }
 
-# keys hidden from the GUI
-HIDDEN_KEYS = {"gguf_path"}
+# keys shown in the GUI (all others are hidden) and their display order
+SHOWN_KEYS = [
+    "pdf_source",
+    "excel_source",
+    "scorecard_dir",
+    "include_LLM_insights",
+    "overwrite_csv",
+    "overwrite_json",
+]
 
 def prettify_key(key: str) -> str:
     if key in PRETTY_NAME_MAP:
@@ -32,11 +39,16 @@ def prettify_key(key: str) -> str:
 
 def _looks_like_path(key: str, value) -> bool:
     if not isinstance(value, str):
-        return "path" in key.lower() or "dir" in key.lower() or "file" in key.lower() or "source" in key.lower()
+        return (
+            "path" in key.lower()
+            or "dir" in key.lower()
+            or "file" in key.lower()
+            or "source" in key.lower()
+        )
     k = key.lower()
     if any(t in k for t in ("path", "dir", "file", "source")):
         return True
-    return ("/" in value or "\\" in value) or bool(os.path.splitext(value)[1])
+    return ("/" in value or os.sep in value) or bool(os.path.splitext(value)[1])
 
 def _prefer_directory_chooser(key: str, value) -> bool:
     k = key.lower()
@@ -54,18 +66,12 @@ def open_config_editor(json_path: str) -> None:
 
     # tk
     root = tk.Tk()
-    root.title(f"Configuration")
+    root.title("Configuration")
     root.geometry("900x650")
 
-    notebook = ttk.Notebook(root)
-    notebook.pack(fill="both", expand=True)
-
-    fields = {} 
+    fields = {}
 
     def add_option_row(parent, section_name, key, value):
-        if key in HIDDEN_KEYS:
-            return
-
         row = tk.Frame(parent)
         row.pack(fill="x", padx=8, pady=4)
 
@@ -73,7 +79,6 @@ def open_config_editor(json_path: str) -> None:
         label.pack(side="left")
 
         # decide control type
-        val_type = "str"
         is_bool = isinstance(value, bool)
         is_bool_str = isinstance(value, str) and value.lower() in ("true", "false")
         is_path = _looks_like_path(key, value)
@@ -83,7 +88,10 @@ def open_config_editor(json_path: str) -> None:
             var = tk.BooleanVar(value=(value if is_bool else value.lower() == "true"))
             chk = tk.Checkbutton(row, variable=var)
             chk.pack(side="left", anchor="w")
-            fields[(section_name, key)] = {"var": var, "type": ("bool" if is_bool else "bool_str")}
+            fields[(section_name, key)] = {
+                "var": var,
+                "type": ("bool" if is_bool else "bool_str"),
+            }
         elif is_path:
             var = tk.StringVar(value=str(value))
             ent = tk.Entry(row, textvariable=var)
@@ -91,9 +99,14 @@ def open_config_editor(json_path: str) -> None:
 
             def choose_path(target_var=var, directory=use_dir):
                 if directory:
-                    p = filedialog.askdirectory(initialdir=os.path.dirname(target_var.get()) or os.getcwd(), mustexist=False)
+                    p = filedialog.askdirectory(
+                        initialdir=os.path.dirname(target_var.get()) or os.getcwd(),
+                        mustexist=False,
+                    )
                 else:
-                    p = filedialog.askopenfilename(initialdir=os.path.dirname(target_var.get()) or os.getcwd())
+                    p = filedialog.askopenfilename(
+                        initialdir=os.path.dirname(target_var.get()) or os.getcwd()
+                    )
                 if p:
                     target_var.set(os.path.normpath(p))
 
@@ -106,32 +119,39 @@ def open_config_editor(json_path: str) -> None:
             ent.pack(side="left", fill="x", expand=True)
             fields[(section_name, key)] = {"var": var, "type": "str"}
 
-    # build UI per top-level section
+    # main scrollable area (single page, no tabs)
+    frame = tk.Frame(root)
+    canvas = tk.Canvas(frame)
+    vsb = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
+    inner = tk.Frame(canvas)
+
+    inner.bind(
+        "<Configure>",
+        lambda e, c=canvas: c.configure(scrollregion=c.bbox("all")),
+    )
+    canvas.create_window((0, 0), window=inner, anchor="nw")
+    canvas.configure(yscrollcommand=vsb.set)
+
+    canvas.pack(side="left", fill="both", expand=True)
+    vsb.pack(side="right", fill="y")
+    frame.pack(fill="both", expand=True)
+
+    # collect all config items, indexed by key
+    items_by_key = {}
     for section_name, section_value in data.items():
-        frame = tk.Frame(notebook)
-        # make section scrollable for large configs
-        canvas = tk.Canvas(frame)
-        vsb = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
-        inner = tk.Frame(canvas)
-
-        inner.bind(
-            "<Configure>",
-            lambda e, c=canvas: c.configure(scrollregion=c.bbox("all"))
-        )
-        canvas.create_window((0, 0), window=inner, anchor="nw")
-        canvas.configure(yscrollcommand=vsb.set)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        vsb.pack(side="right", fill="y")
-
-        # render options
         if isinstance(section_value, dict):
-            for k in sorted(section_value.keys()):
-                add_option_row(inner, section_name, k, section_value[k])
+            for k, v in section_value.items():
+                items_by_key.setdefault(k, []).append((section_name, v))
         else:
-            add_option_row(inner, section_name, section_name, section_value)
+            items_by_key.setdefault(section_name, []).append(
+                (section_name, section_value)
+            )
 
-        notebook.add(frame, text=prettify_key(section_name))
+    # render only SHOWN_KEYS, in the given order
+    for key in SHOWN_KEYS:
+        if key in items_by_key:
+            section_name, value = items_by_key[key][0]
+            add_option_row(inner, section_name, key, value)
 
     # actions
     def save_and_close():
@@ -141,11 +161,11 @@ def open_config_editor(json_path: str) -> None:
             t = meta["type"]
             new_value = var.get()
             if t == "bool":
-                pass # already bool
+                # already bool
+                pass
             elif t == "bool_str":
                 new_value = "true" if bool(new_value) else "false"
             else:
-                # keep as string
                 new_value = str(new_value)
 
             if isinstance(data.get(section), dict):
@@ -163,8 +183,11 @@ def open_config_editor(json_path: str) -> None:
 
     btn_bar = tk.Frame(root)
     btn_bar.pack(fill="x", padx=8, pady=8)
-    tk.Button(btn_bar, text="Save", command=save_and_close).pack(side="right", padx=4)
-    tk.Button(btn_bar, text="Cancel", command=root.destroy).pack(side="right", padx=4)
+    tk.Button(btn_bar, text="Save", command=save_and_close).pack(
+        side="right", padx=4
+    )
+    tk.Button(btn_bar, text="Cancel", command=root.destroy).pack(
+        side="right", padx=4
+    )
 
     root.mainloop()
-
