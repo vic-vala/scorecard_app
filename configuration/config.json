@@ -28,5 +28,11 @@
         "sem": "Fall",
         "year": "2011",
         "course_num": "71428"
+    },
+    "comparison": {
+        "match_term": "true",
+        "match_year": "true",
+        "match_subject": "true",
+        "match_catalog_number": "hundred"
     }
 }

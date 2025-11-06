@@ -6,20 +6,17 @@ from tkinter import ttk, filedialog, messagebox
 
 # hard coded display names
 PRETTY_NAME_MAP = {
-    "sem": "Semester",
-    "include_LLM_insights": "Include LLM Insights",
-    "overwrite_csv": "Overwrite CSV?",
-    "overwrite_json": "Overwrite JSON?",
-    "pdf_source": "PDF Source",
-    "excel_source": "Excel Source",
-    "csv_dir": "CSV Directory",
-    "tex_dir": "TeX Directory",
-    "parsed_pdf_dir": "Parsed PDF Directory",
-    "temp_dir": "Temp Directory",
-    "scorecard_dir": "Scorecard Directory",
-    "schema_source": "Schema Source",
-    "llm_prompt_dir": "LLM Prompt Directory",
-    "gguf_path": "GGUF Model Path",
+    "include_LLM_insights": ("Include LLM summary?", "If this setting is enabled, an AI model with generate a short summary of student comments on each course scorecard. This may take a few minutes per scorecard."),
+    "overwrite_csv": ("Overwrite CSV?", "[Advanced]\nOverwrites internal CSV files created from Excel sheets.\n(Recommended: False)"),
+    "overwrite_json": ("Overwrite JSON?", "[Advanced]\nOverwrites internal JSON files created from Excel sheets.\n(Recommended: False)"),
+    "pdf_source": ("PDF Source", "The folder where all Course Evaluation PDF files are located."),
+    "excel_source": ("Excel Source", "The course history excel file."),
+    "scorecard_dir": ("Scorecard Directory", "The desired folder for finised scorecard PDFs."),
+
+    "match_term": ("Match Term?", "Courses will only be compared against other courses of the same term. (Fall/Spring/Summer)\n(Recommended: True)"),
+    "match_year": ("Match Year?", "Courses will only be compared against other courses of the same calendar year.\n(Recommended: True)"),
+    "match_subject": ("Match Subject?", "Courses will only be comapred against other courses of the same subject. (CSE, IEE, SER, etc.)\n(Recommended: True)"),
+    "match_catalog_number": ("Match Catalog Number?", "Courses will only be comapred against other courses of the same catalog number. \nIf the \"hundred\" option is selected, all courses in the same x00-x99 range will be compared to each other. (100-199, 200-299, 300-399, etc.)\n(Recommended: Hundred)"),
 }
 
 # keys shown in the GUI (all others are hidden) and their display order
@@ -28,6 +25,10 @@ SHOWN_KEYS = [
     "excel_source",
     "scorecard_dir",
     "include_LLM_insights",
+    "match_term",
+    "match_year",
+    "match_subject",
+    "match_catalog_number",
     "overwrite_csv",
     "overwrite_json",
 ]
@@ -75,7 +76,17 @@ def open_config_editor(json_path: str) -> None:
         row = tk.Frame(parent)
         row.pack(fill="x", padx=8, pady=4)
 
-        label = tk.Label(row, text=prettify_key(key), width=26, anchor="w")
+        # description above the option
+        desc_text = get_description(key)
+        if desc_text:
+            desc_label = tk.Label(row, text=desc_text, anchor="w", justify="left")
+            desc_label.pack(fill="x")
+
+        # line that contains label + control
+        line = tk.Frame(row)
+        line.pack(fill="x")
+
+        label = tk.Label(line, text=prettify_key(key), width=26, anchor="w")
         label.pack(side="left")
 
         # decide control type
@@ -84,17 +95,30 @@ def open_config_editor(json_path: str) -> None:
         is_path = _looks_like_path(key, value)
         use_dir = _prefer_directory_chooser(key, value)
 
-        if is_bool or is_bool_str:
+        # special tri-state for match_catalog_number
+        if key == "match_catalog_number":
+            var = tk.StringVar(value=str(value))
+            combo = ttk.Combobox(
+                line,
+                textvariable=var,
+                values=["true", "false", "hundred"],
+                state="readonly",
+            )
+            combo.pack(side="left", fill="x", expand=True)
+            fields[(section_name, key)] = {"var": var, "type": "str"}
+
+        elif is_bool or is_bool_str:
             var = tk.BooleanVar(value=(value if is_bool else value.lower() == "true"))
-            chk = tk.Checkbutton(row, variable=var)
+            chk = tk.Checkbutton(line, variable=var)
             chk.pack(side="left", anchor="w")
             fields[(section_name, key)] = {
                 "var": var,
                 "type": ("bool" if is_bool else "bool_str"),
             }
+
         elif is_path:
             var = tk.StringVar(value=str(value))
-            ent = tk.Entry(row, textvariable=var)
+            ent = tk.Entry(line, textvariable=var)
             ent.pack(side="left", fill="x", expand=True)
 
             def choose_path(target_var=var, directory=use_dir):
@@ -110,14 +134,16 @@ def open_config_editor(json_path: str) -> None:
                 if p:
                     target_var.set(os.path.normpath(p))
 
-            btn = tk.Button(row, text="Browse", command=choose_path)
+            btn = tk.Button(line, text="Browse", command=choose_path)
             btn.pack(side="left", padx=6)
             fields[(section_name, key)] = {"var": var, "type": "str"}
+
         else:
             var = tk.StringVar(value=str(value))
-            ent = tk.Entry(row, textvariable=var)
+            ent = tk.Entry(line, textvariable=var)
             ent.pack(side="left", fill="x", expand=True)
             fields[(section_name, key)] = {"var": var, "type": "str"}
+
 
     # main scrollable area (single page, no tabs)
     frame = tk.Frame(root)
@@ -191,3 +217,27 @@ def open_config_editor(json_path: str) -> None:
     )
 
     root.mainloop()
+
+def _label_and_description_for_key(key: str) -> tuple[str, str]:
+    if key in PRETTY_NAME_MAP:
+        val = PRETTY_NAME_MAP[key]
+        if isinstance(val, tuple):
+            if len(val) == 2:
+                return str(val[0]), str(val[1])
+            if len(val) == 1:
+                return str(val[0]), "TODO placeholder"
+        else:
+            return str(val), "TODO placeholder"
+    # fallback for unknown keys
+    label = key.replace("_", " ").title()
+    return label, "TODO placeholder"
+
+
+def prettify_key(key: str) -> str:
+    label, _ = _label_and_description_for_key(key)
+    return label
+
+
+def get_description(key: str) -> str:
+    _, desc = _label_and_description_for_key(key)
+    return desc
