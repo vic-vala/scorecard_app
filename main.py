@@ -10,11 +10,13 @@ from src import (
     csv_cleaner,
     config_gui,
     data_handler,
+    select_rows_gui,
 )
 
 if __name__ == "__main__":
     try:
         CONFIG_PATH = utils.CONFIG_PATH
+        print("🖥️ Opening Config GUI")
         config_gui.open_config_editor(CONFIG_PATH)
 
         # Load config file
@@ -44,6 +46,10 @@ if __name__ == "__main__":
         # Use CSV/PDF overlap to find viable scorecards
         print("🔗 Finding viable courses for scorecard creation")
         viable_scorecards = data_handler.viable_scorecards(paths['parsed_pdf_dir'],csv_path[0])
+
+        print("🖥️ Opening Scorecard Selection GUI")
+        selected_scorecard_courses = select_rows_gui.select_rows_gui(viable_scorecards)
+        print(f"  ✅ {len(selected_scorecard_courses)} course(s) selected.")
         
         # Run LLM IO
         if (include_llm_insights):
