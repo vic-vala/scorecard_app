@@ -1,6 +1,16 @@
 import json
 import os
-from src import pdf_parser, utils, data_vis, llm_io, excel_parser, scorecard_assembler, csv_cleaner, config_gui
+from src import (
+    pdf_parser,
+    utils,
+    data_vis,
+    llm_io,
+    excel_parser,
+    scorecard_assembler,
+    csv_cleaner,
+    config_gui,
+    data_handler,
+)
 
 if __name__ == "__main__":
     try:
@@ -31,6 +41,10 @@ if __name__ == "__main__":
         print("📄 Starting PDF parser")
         pdf_parser.run_pdf_parser(paths['pdf_source'], paths['parsed_pdf_dir'], overwrite_json=overwrite_json)
 
+        # Use CSV/PDF overlap to find viable scorecards
+        print("🔗 Finding viable courses for scorecard creation")
+        viable_scorecards = data_handler.viable_scorecards(paths['parsed_pdf_dir'],csv_path[0])
+        
         # Run LLM IO
         if (include_llm_insights):
             print("🤖 Running LLM I/O")
