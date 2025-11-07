@@ -212,7 +212,7 @@ def open_config_editor(json_path: str) -> None:
     tk.Button(btn_bar, text="Save", command=save_and_close).pack(
         side="right", padx=4
     )
-    tk.Button(btn_bar, text="Cancel", command=root.destroy).pack(
+    tk.Button(btn_bar, text="Continue", command=root.destroy).pack(
         side="right", padx=4
     )
 
