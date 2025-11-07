@@ -50,12 +50,12 @@ def select_rows_gui(df: pd.DataFrame) -> pd.DataFrame:
 
     # create main window
     root = tk.Tk()
-    root.title("Select Courses for Scorecard Creation")
+    root.title("Course/Instructor Selection")
 
     # instruction text area above everything
     instruction_text = (
-        "Select all courses you wish to create course scorecards for, and then press Confirm.\n"
-        "If you do not want to create any course specific scorecards, do not select any courses.\n"
+        "Select all courses/instructorrs you wish to create scorecards for, and then press Confirm.\n"
+        "If you do not want to create any course/instructor specific scorecards, do not select any courses.\n"
         "To search for specific courses, specify a column below and search to narrow down the displayed courses."
     )
     instruction_label = ttk.Label(

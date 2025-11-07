@@ -99,3 +99,22 @@ def viable_scorecards(json_dir: str, csv_path: str) -> pd.DataFrame:
         result = df.iloc[0:0].copy()
 
     return result
+
+def get_instructors(csv_path: str) -> pd.DataFrame:
+    df = pd.read_csv(csv_path, dtype=str)
+
+    cols = ["Instructor", "Instructor First", "Instructor Middle", "Instructor Last"]
+    missing = [c for c in cols if c not in df.columns]
+    if missing:
+        raise KeyError(f"Missing expected columns in CSV: {', '.join(missing)}")
+
+    for c in cols:
+        df[c] = df[c].fillna("").astype(str).str.strip()
+
+    result = (
+        df.groupby(cols, dropna=False)
+          .size()
+          .reset_index(name="Number of Courses")
+    )
+
+    return result

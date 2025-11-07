@@ -50,6 +50,11 @@ if __name__ == "__main__":
         print("🖥️ Opening Scorecard Selection GUI")
         selected_scorecard_courses = select_rows_gui.select_rows_gui(viable_scorecards)
         print(f"  ✅ {len(selected_scorecard_courses)} course(s) selected.")
+
+        instructors = data_handler.get_instructors(csv_path[0])
+        print("🖥️ Opening Instructor Selection GUI")
+        selected_scorecard_instructors = select_rows_gui.select_rows_gui(instructors)
+        print(f"  ✅ {len(selected_scorecard_instructors)} instructor(s) selected.")
         
         # Run LLM IO
         if (include_llm_insights):
