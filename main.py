@@ -15,6 +15,7 @@ from src import (
 
 if __name__ == "__main__":
     try:
+        # Config GUI
         CONFIG_PATH = utils.CONFIG_PATH
         print("🖥️ Opening Config GUI")
         config_gui.open_config_editor(CONFIG_PATH)
@@ -22,6 +23,7 @@ if __name__ == "__main__":
         # Load config file
         config = utils.load_config()
         paths = config['paths']
+        comparison = config["comparison"]
         scorecard_settings = config['scorecard_gen_settings']
         data_vis_settings = config['data_vis_settings']
         include_llm_insights = str(scorecard_settings.get("include_LLM_insights", "false")).lower() == "true"
@@ -47,10 +49,12 @@ if __name__ == "__main__":
         print("🔗 Finding viable courses for scorecard creation")
         viable_scorecards = data_handler.viable_scorecards(paths['parsed_pdf_dir'],csv_path[0])
 
+        # Course scorecard selection GUI
         print("🖥️ Opening Scorecard Selection GUI")
         selected_scorecard_courses = select_rows_gui.select_rows_gui(viable_scorecards)
         print(f"  ✅ {len(selected_scorecard_courses)} course(s) selected.")
 
+        # Instructor scorecard selection GUI
         instructors = data_handler.get_instructors(csv_path[0])
         print("🖥️ Opening Instructor Selection GUI")
         selected_scorecard_instructors = select_rows_gui.select_rows_gui(instructors)
