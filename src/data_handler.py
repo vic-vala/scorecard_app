@@ -185,6 +185,78 @@ def compute_course_gpa(row_like: Mapping[str, Any], scale: Dict[str, float]) -> 
     return total_points / total_count
 
 
+def describe_aggregate(
+    comparison: Dict[str, Any],
+    row: Mapping[str, Any],
+) -> str:
+    """
+    Goes from a comparison config to a readable name for the baseline/aggregate
+
+    Examples:
+      "All Available CSE 400-499 Fall 2011 Courses"
+      "All Available CSE 470 Fall 2011 Courses"
+      "All Available Courses"
+    """
+    subject = str(row.get("Subject", "")).strip()
+    catalog = str(row.get("Catalog Nbr", "")).strip()
+    term = str(row.get("Term", "")).strip()
+
+    raw_year = row.get("Year", "")
+    year_str = ""
+    if raw_year is not None and raw_year != "":
+        try:
+            year_str = str(int(raw_year))
+        except Exception:
+            year_str = str(raw_year).strip()
+
+    match_term = _is_true(comparison.get("match_term"))
+    match_year = _is_true(comparison.get("match_year"))
+    match_subject = _is_true(comparison.get("match_subject"))
+    match_catalog = str(comparison.get("match_catalog_number", "false")).lower()
+
+    parts = []
+
+    # subject + catalog logic
+    subject_catalog = ""
+    if match_subject and subject:
+        if match_catalog == "true" and catalog:
+            subject_catalog = f"{subject} {catalog}"
+        elif match_catalog == "hundred" and catalog:
+            n = _parse_catalog_int(catalog)
+            if n is not None:
+                start = (n // 100) * 100
+                end = start + 99
+                subject_catalog = f"{subject} {start}-{end}"
+            else:
+                subject_catalog = subject
+        else:
+            subject_catalog = subject
+    elif (not match_subject) and catalog and match_catalog in ("true", "hundred"):
+        if match_catalog == "true":
+            subject_catalog = f"{catalog}"
+        else:
+            n = _parse_catalog_int(catalog)
+            if n is not None:
+                start = (n // 100) * 100
+                end = start + 99
+                subject_catalog = f"{start}-{end}"
+
+    if subject_catalog:
+        parts.append(subject_catalog)
+
+    if match_term and term:
+        parts.append(term)
+
+    if match_year and year_str:
+        parts.append(year_str)
+
+    if parts:
+        main = " ".join(parts)
+        return f"All Available {main} Courses"
+    else:
+        return "All Available Courses"
+
+
 def aggregate_for_row(
     comparison: Dict[str, Any],
     row: Mapping[str, Any],
@@ -237,6 +309,8 @@ def aggregate_for_row(
     match_year = _is_true(comparison.get("match_year"))
     match_subject = _is_true(comparison.get("match_subject"))
     match_catalog = comparison.get("match_catalog_number", "false")
+
+    aggregate_name = describe_aggregate(comparison, row)
 
     # CSV section
     df = pd.read_csv(csv_path)
@@ -385,6 +459,7 @@ def aggregate_for_row(
     )
 
     return {
+        "aggregate_name": aggregate_name,
         "gpa": gpa_value,
         "median_grade": median_grade,
         "q1_grade": q1_grade,
