@@ -1,4 +1,8 @@
 import os
+import json
+import math
+import re
+from typing import Any, Dict, Mapping, Optional
 import pandas as pd
 
 
@@ -118,3 +122,279 @@ def get_instructors(csv_path: str) -> pd.DataFrame:
     )
 
     return result
+
+gpa_scale = {
+    "A+": 4.33, "A": 4.0, "A-": 3.67,
+    "B+": 3.33, "B": 3.0, "B-": 2.67,
+    "C+": 2.33, "C": 2.0, "D": 1.0, "E": 0.0,
+}
+
+GRADE_COLS = [
+    "A+", "A", "A-", "B+", "B", "B-",
+    "C+", "C", "D", "E",
+    "EN", "EU", "I", "NR", "NR.1",
+    "W", "X", "XE", "Y", "Z",
+]
+
+def _is_true(val: Any) -> bool:
+    return str(val).lower() == "true"
+
+def _is_hundred(val: Any) -> bool:
+    return str(val).lower() == "hundred"
+
+def _parse_catalog_int(value: Any) -> Optional[int]:
+    """extract leading integer from a catalog string, like '470' or '4DE'."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return None
+    s = str(value).strip()
+    m = re.match(r"\d+", s)
+    if not m:
+        return None
+    try:
+        return int(m.group(0))
+    except ValueError:
+        return None
+
+def _same_hundred_level(cat1: Any, cat2: Any) -> bool:
+    """return True if two catalog numbers are in the same x00 x99 band"""
+    n1 = _parse_catalog_int(cat1)
+    n2 = _parse_catalog_int(cat2)
+    if n1 is None or n2 is None:
+        return False
+    return (n1 // 100) == (n2 // 100)
+
+def compute_course_gpa(row_like: Mapping[str, Any], scale: Dict[str, float]) -> Optional[float]:
+    """
+    compute GPA for a single course row from CSV data
+    uses gpa_scale and only A+ through E, ignores EN EU W I etc.
+    """
+    total_points = 0.0
+    total_count = 0
+
+    for grade, weight in scale.items():
+        if grade in row_like:
+            count = row_like[grade]
+            if pd.isna(count):
+                continue
+            cnt = int(count)
+            total_points += cnt * weight
+            total_count += cnt
+
+    if total_count == 0:
+        return None
+    return total_points / total_count
+
+
+def aggregate_for_row(
+    comparison: Dict[str, Any],
+    row: Mapping[str, Any],
+    json_dir: str,
+    csv_path: str,
+) -> Dict[str, Any]:
+    """
+    (This documentation (and some comments) are LLM generated, 
+    reach out to Joey if any of this doesn't make sense/needs clarification)
+
+    Aggregate metrics over all courses that match `row` according to `comparison`.
+
+    comparison keys:
+      - 'match_term'           in {'true', 'false'}
+      - 'match_year'           in {'true', 'false'}
+      - 'match_subject'        in {'true', 'false'}
+      - 'match_catalog_number' in {'true', 'false', 'hundred'}
+
+    row must have at least:
+      'Subject', 'Catalog Nbr', 'Term', 'Year'
+
+    Matching rules:
+      * term subject year filtered only if the corresponding match_* is 'true'
+      * match_catalog_number
+          'true'   exact Catalog Nbr
+          'hundred' same x00 x99 band, for example 400 499
+          'false'  ignore catalog number
+
+    Returns a dict with:
+      gpa                mean GPA over matched CSV rows
+      median_grade       median letter grade over all students in matched CSV rows
+      q1_grade           first quartile grade
+      q3_grade           third quartile grade
+      grade_percentages  dict grade -> percent of students
+      course_size_avg    average JSON course size (total_students)
+      num_responses      total JSON responses across matches
+      total_students     total JSON students across matches
+      avg_part1          mean eval_info['avg1'] over JSON matches
+      avg_part2          mean eval_info['avg2'] over JSON matches
+      num_courses_csv    count of matched CSV rows
+      num_courses_json   count of matched JSON eval files
+    """
+    # Target values from the given row
+    subject_val = row["Subject"]
+    term_val = row["Term"]
+    year_val = int(row["Year"])
+    catalog_val = row["Catalog Nbr"]
+
+    match_term = _is_true(comparison.get("match_term"))
+    match_year = _is_true(comparison.get("match_year"))
+    match_subject = _is_true(comparison.get("match_subject"))
+    match_catalog = comparison.get("match_catalog_number", "false")
+
+    # CSV section
+    df = pd.read_csv(csv_path)
+
+    mask = pd.Series(True, index=df.index)
+    if match_subject:
+        mask &= df["Subject"] == subject_val
+    if match_term:
+        mask &= df["Term"] == term_val
+    if match_year:
+        mask &= df["Year"].astype(int) == year_val
+
+    if str(match_catalog).lower() == "true":
+        mask &= df["Catalog Nbr"] == catalog_val
+    elif _is_hundred(match_catalog):
+        target_cat = catalog_val
+        mask &= df["Catalog Nbr"].apply(
+            lambda x: _same_hundred_level(x, target_cat)
+        )
+
+    matched_df = df[mask].copy()
+    num_courses_csv = len(matched_df)
+
+    # GPA across matched CSV rows
+    gpas = []
+    for _, r in matched_df.iterrows():
+        g = compute_course_gpa(r, gpa_scale)
+        if g is not None:
+            gpas.append(g)
+    gpa_value: Optional[float] = (
+        sum(gpas) / len(gpas) if gpas else None
+    )
+
+    # Grade distribution and quartiles from CSV
+    grade_percentages = {g: 0.0 for g in GRADE_COLS}
+    q1_grade = median_grade = q3_grade = None
+
+    if num_courses_csv > 0:
+        grade_counts = matched_df[GRADE_COLS].sum()
+        total_grades = int(grade_counts.sum())
+
+        if total_grades > 0:
+            for g in GRADE_COLS:
+                grade_percentages[g] = (
+                    float(grade_counts[g]) / total_grades
+                )
+
+            def percentile_grade(q: float) -> Optional[str]:
+                # q in [0,1]
+                threshold = q * total_grades
+                cumulative = 0
+                for grade in GRADE_COLS:  # ordered from A+ down to Z
+                    cumulative += int(grade_counts[grade])
+                    if cumulative >= threshold:
+                        return grade
+                return None
+            
+            # caveat: i dont know why q1 is 0.75 and why q3 is 0.25 and why it works
+            q1_grade = percentile_grade(0.75) 
+            median_grade = percentile_grade(0.50)
+            q3_grade = percentile_grade(0.25)
+
+    # JSON part
+    json_course_sizes = []
+    json_responses = []
+    json_avg1 = []
+    json_avg2 = []
+
+    if os.path.isdir(json_dir):
+        for fname in os.listdir(json_dir):
+            if not fname.lower().endswith(".json"):
+                continue
+            fpath = os.path.join(json_dir, fname)
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                continue
+
+            info = data.get("eval_info", {})
+            dept = info.get("department")
+            course = info.get("course")
+            term_j = info.get("term")
+            year_j_raw = info.get("year")
+
+            try:
+                year_j = int(year_j_raw)
+            except Exception:
+                continue
+
+            # Apply the same matching logic
+            if match_subject and dept != subject_val:
+                continue
+            if match_term and term_j != term_val:
+                continue
+            if match_year and year_j != year_val:
+                continue
+
+            if str(match_catalog).lower() == "true":
+                if course != str(catalog_val):
+                    continue
+            elif _is_hundred(match_catalog):
+                if not _same_hundred_level(course, catalog_val):
+                    continue
+
+            # Collect JSON metrics
+            try:
+                total_students = int(info.get("total_students"))
+            except Exception:
+                total_students = None
+            try:
+                response_count = int(info.get("response_count"))
+            except Exception:
+                response_count = None
+            try:
+                avg1 = float(info.get("avg1"))
+            except Exception:
+                avg1 = None
+            try:
+                avg2 = float(info.get("avg2"))
+            except Exception:
+                avg2 = None
+
+            if total_students is not None:
+                json_course_sizes.append(total_students)
+            if response_count is not None:
+                json_responses.append(response_count)
+            if avg1 is not None:
+                json_avg1.append(avg1)
+            if avg2 is not None:
+                json_avg2.append(avg2)
+
+    num_courses_json = len(json_course_sizes)
+
+    course_size_avg = (
+        float(sum(json_course_sizes)) / len(json_course_sizes)
+        if json_course_sizes else None
+    )
+    num_responses = int(sum(json_responses)) if json_responses else None
+    total_students = int(sum(json_course_sizes)) if json_course_sizes else None
+    avg_part1 = (
+        float(sum(json_avg1)) / len(json_avg1) if json_avg1 else None
+    )
+    avg_part2 = (
+        float(sum(json_avg2)) / len(json_avg2) if json_avg2 else None
+    )
+
+    return {
+        "gpa": gpa_value,
+        "median_grade": median_grade,
+        "q1_grade": q1_grade,
+        "q3_grade": q3_grade,
+        "grade_percentages": grade_percentages,
+        "course_size_avg": course_size_avg,
+        "num_responses": num_responses,
+        "total_students": total_students,
+        "avg_part1": avg_part1,
+        "avg_part2": avg_part2,
+        "num_courses_csv": num_courses_csv,
+        "num_courses_json": num_courses_json,
+    }
