@@ -6,6 +6,9 @@
         "tex_dir": "./temporary_files/tex",
         "parsed_pdf_dir": "./temporary_files/json",
         "temp_dir": "./temporary_files/images",
+        "grade_histogram_dir": "./temporary_files/images/grade_histograms",
+        "course_history_graph_dir": "./temporary_files/images/course_history_graphs",
+        "instructor_course_gpa_graph_dir": "./temporary_files/images/instructor_course_gpa_graph",
         "scorecard_dir": "./scorecards",
         "schema_source": "./src/schema/parsed_pdf_schema.py",
         "gguf_path": "./configuration/LLM/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
@@ -30,9 +33,9 @@
         "course_num": "71428"
     },
     "comparison": {
-        "match_term": "true",
-        "match_year": "true",
-        "match_subject": "true",
+        "match_term": "false",
+        "match_year": "false",
+        "match_subject": "false",
         "match_catalog_number": "hundred"
     }
 }

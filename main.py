@@ -59,7 +59,7 @@ if __name__ == "__main__":
         print("🖥️ Opening Instructor Selection GUI")
         selected_scorecard_instructors = select_rows_gui.select_rows_gui(instructors)
         print(f"  ✅ {len(selected_scorecard_instructors)} instructor(s) selected.")
-        
+
         # Run LLM IO
         if (include_llm_insights):
             print("🤖 Running LLM I/O")
@@ -69,8 +69,9 @@ if __name__ == "__main__":
                         llm_dir= paths['llm_prompt_dir'],
                         temp_dir= paths['temp_dir'])
         
-        # TODO: Generate Visuals -- Waiting on CSV changes to integrate
-        #data_vis.generate_data_visualization(data_settings, paths['excel_source'])
+        # Generate data visualizations
+        print("📈 Generating Data Visualizations")
+        data_vis.generate_data_visualization(config, selected_scorecard_courses, selected_scorecard_instructors, csv_path[0])
 
         # TODO: Assemble & Save Scorecard PDF
         print("📝 Generating LaTeX")
