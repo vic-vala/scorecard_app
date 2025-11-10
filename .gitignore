@@ -7,6 +7,11 @@ pvenv/
 pvenv
 venv/
 venv
+.venv
+.venv/
+*.toml
+*.python-version
+uv.lock
 
 # Project specific
 temporary_files/
