@@ -478,9 +478,11 @@ def get_unique_courses(csv_path):
     """
     return a dataframe of unique courses in the CSV
 
-    the df only has two columns (if you add more nothing should break though)
+    The df has four columns:
         'Subject'
         'Catalog Nbr'
+        'Unique Instructors'
+        'Unique Class Sessions'
     """
     if isinstance(csv_path, (list, tuple)):
         if not csv_path:
@@ -491,15 +493,35 @@ def get_unique_courses(csv_path):
 
     df = pd.read_csv(csv_path_use, dtype=str)
 
-    required_cols = ["Subject", "Catalog Nbr"]
-    missing = [c for c in required_cols if c not in df.columns]
-    if missing:
-        raise KeyError(f"Missing expected columns in CSV: {', '.join(missing)}")
+    base_cols = ["Subject", "Catalog Nbr"]
+    extra_cols = ["Instructor", "Class Nbr"]
 
-    result = df[required_cols].copy()
-    for c in required_cols:
-        result[c] = result[c].fillna("").astype(str).str.strip()
+    missing_base = [c for c in base_cols if c not in df.columns]
+    if missing_base:
+        raise KeyError(f"Missing expected columns in CSV: {', '.join(missing_base)}")
 
-    result = (result.drop_duplicates().sort_values(required_cols).reset_index(drop=True))
+    missing_extra = [c for c in extra_cols if c not in df.columns]
+    if missing_extra:
+        raise KeyError(f"Missing expected columns in CSV: {', '.join(missing_extra)}")
+
+    use_cols = base_cols + extra_cols
+    tmp = df[use_cols].copy()
+
+    # normalize
+    for c in use_cols:
+        tmp[c] = tmp[c].fillna("").astype(str).str.strip()
+
+    # group by course and count unique instructors and class numbers
+    result = (
+        tmp.groupby(base_cols, as_index=False)
+           .agg(
+               **{
+                   "Unique Instructors": ("Instructor", lambda x: x[x != ""].nunique()),
+                   "Unique Class Sessions": ("Class Nbr", lambda x: x[x != ""].nunique()),
+               }
+           )
+           .sort_values(base_cols)
+           .reset_index(drop=True)
+    )
 
     return result
