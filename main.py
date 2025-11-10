@@ -54,6 +54,12 @@ if __name__ == "__main__":
         selected_scorecard_courses = select_rows_gui.select_rows_gui(viable_scorecards)
         print(f"  ✅ {len(selected_scorecard_courses)} course(s) selected.")
 
+        # Course history selection GUI (unique courses)
+        unique_courses = data_handler.get_unique_courses(csv_path[0])
+        print("🖥️ Opening Course History Selection GUI")
+        selected_history_courses = select_rows_gui.select_rows_gui(unique_courses)
+        print(f"  ✅ {len(selected_history_courses)} course(s) selected for history graphs.")
+
         # Instructor scorecard selection GUI
         instructors = data_handler.get_instructors(csv_path[0])
         print("🖥️ Opening Instructor Selection GUI")
@@ -71,7 +77,12 @@ if __name__ == "__main__":
         
         # Generate data visualizations
         print("📈 Generating Data Visualizations")
-        data_vis.generate_data_visualization(config, selected_scorecard_courses, selected_scorecard_instructors, csv_path[0])
+        data_vis.generate_data_visualization(
+            config, 
+            selected_scorecard_courses, 
+            selected_scorecard_instructors, 
+            csv_path[0], 
+            selected_history_courses)
 
         # TODO: Assemble & Save Scorecard PDF
         print("📝 Generating LaTeX")

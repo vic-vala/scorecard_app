@@ -2,6 +2,7 @@ import os
 import json
 import math
 import re
+import itertools
 from typing import Any, Dict, Mapping, Optional
 import pandas as pd
 import numpy as np
@@ -15,15 +16,29 @@ def generate_data_visualization(
         config, 
         selected_scorecard_courses, 
         selected_scorecard_instructors,
-        csv_path
+        csv_path,
+        selected_history_courses,
 ):
-    print ("  🏫 Generating Course Data Visualizations")
-    for index, course in selected_scorecard_courses.iterrows():
+    print("  🏫 Generating Course Data Visualizations") ##############################################
+    for _, course in selected_scorecard_courses.iterrows():
         generate_course_grade_histogram(config, course, csv_path)
-        generate_course_history_graph(config, course, csv_path)
-    
-    print ("  👨‍🏫 Generating Instructor Data Visualizations")
-    for index, instructor in selected_scorecard_instructors.iterrows():
+
+    print("  🕰️ Generating Course History Graphs") ###################################################
+    if isinstance(csv_path, (list, tuple)):
+        if not csv_path:
+            raise ValueError("csv_path list/tuple is empty.")
+        csv_path_for_history = csv_path[0]
+    else:
+        csv_path_for_history = csv_path
+
+    if selected_history_courses is None or selected_history_courses.empty:
+        print("  📉 No courses selected for history graphs. Skipping course history generation.")
+    else:
+        for _, course in selected_history_courses.iterrows():
+            generate_course_history_graph(config, course, csv_path_for_history)
+
+    print("  👨‍🏫 Generating Instructor Data Visualizations") ##########################################
+    for _, instructor in selected_scorecard_instructors.iterrows():
         generate_instructor_course_gpa_graph(config, instructor, csv_path)
 
 def _slug(value: Any, fallback: str = "NA") -> str:
@@ -251,20 +266,326 @@ def generate_course_grade_histogram(
     return out_path
 
 def generate_course_history_graph(
-        config, 
+        config: Mapping[str, Any],
         course: Mapping[str, Any],
-        csv_path
+        csv_path,
 ):
-    
-    subject = str(course.get("Subject", "")).strip()
-    catalog = str(course.get("Catalog Nbr", "")).strip()
-    term = str(course.get("Term", "")).strip()
-    year = str(course.get("Year", "")).strip()
-    instructor = str(course.get("Instructor", "")).strip()
+    """
+    (This function (and the documentation) is pretty vibe coded. If any changes are needed to this, just look at 
+    matplotlib docs and try to look for the specific thing you need, since this is a bit messy)
 
-    print(f"    🟧 Placeholder - Generate course history graph for {subject} {catalog}, {term} {year} ({instructor})") 
+    GPA-over-time history graph for a single course.
+
+    For the given (Subject, Catalog Nbr), this plots:
+      - per-instructor average GPA over time as lines with markers
+      - the aggregate mean GPA per term
+      - a shaded band representing ±1 standard deviation around the mean
+
+    Output file:
+      {Subject}_{Catalog Nbr}.png
+    written into course_history_graph_dir.
+    """
+    # paths and config options #######################################################
+    paths = config.get("paths", {}) or config.get("PATHS", {})
+
+    course_hist_dir = (
+        config.get("course_history_graph_dir")
+        or paths.get("course_history_graph_dir")
+        or paths.get("course_history_dir")
+    )
+    if not course_hist_dir:
+        raise KeyError(
+            "course_history_graph_dir not found in config or config['paths']."
+        )
+
+    os.makedirs(course_hist_dir, exist_ok=True)
+
+    plot_cfg = (
+        config.get("plots", {}).get("course_history_graph", {})
+        or config.get("course_history_graph", {})
+        or {}
+    )
+
+    dpi = int(plot_cfg.get("dpi", 100))
+    width_px = int(plot_cfg.get("width_px", 1920))
+    height_px = int(plot_cfg.get("height_px", 1080))
+    fig_width = width_px / dpi
+    fig_height = height_px / dpi
+
+    mean_color = plot_cfg.get("mean_color", "#ff8800")
+    band_color = plot_cfg.get("std_fill_color", "#cccccc")
+    band_alpha = float(plot_cfg.get("std_alpha", 0.3))
+
+    mean_linewidth = float(plot_cfg.get("mean_linewidth", 4.0))
+    mean_markersize = float(plot_cfg.get("mean_marker_size", 7.0))
+
+    # per-instructor line and marker sizes
+    instructor_markersize = float(
+        plot_cfg.get("instructor_marker_size", plot_cfg.get("marker_size", 7.0))
+    )
+    instructor_linewidth = float(
+        plot_cfg.get("instructor_linewidth", plot_cfg.get("marker_edge_width", 2.0))
+    )
+
+    # Marker / linestyle options for instructors
+    marker_options = plot_cfg.get(
+        "instructor_markers",
+        ["o", "^", "s", "D", "P", "X"],
+    )
+    linestyle_options = plot_cfg.get(
+        "instructor_linestyles",
+        ["-", "--", "-.", ":"],
+    )
+
+    # Normalize csv_path ###########################################################
+    if isinstance(csv_path, (list, tuple)):
+        if not csv_path:
+            raise ValueError("csv_path list/tuple is empty.")
+        csv_path_use = csv_path[0]
+    else:
+        csv_path_use = csv_path
+
+    # Load CSV and compute GPA per row ############################################
+    df = pd.read_csv(csv_path_use, dtype=str)
+
+    def _row_gpa(row):
+        return data_handler.compute_course_gpa(row, data_handler.gpa_scale)
+
+    df["Average_GPA"] = df.apply(_row_gpa, axis=1)
+
+    # Filter for the requested course #############################################
+    subject = str(course.get("Subject") or "").strip()
+    catalog = str(course.get("Catalog Nbr") or "").strip()
+
+    if not subject or not catalog:
+        print("    ⚠️ Skipping course history graph for row with missing Subject/Catalog Nbr")
+        return None
+
+    mask = (
+        df["Subject"].astype(str).str.strip().eq(subject)
+        & df["Catalog Nbr"].astype(str).str.strip().eq(catalog)
+    )
+    df_course = df[mask].copy()
+
+    if df_course.empty:
+        print(f"    ⚠️ No rows found for course {subject} {catalog} in CSV. Skipping history graph.")
+        return None
+
+    # Decode semester from STRM or (Term, Year) ###################################
+    def _decode_strm(val):
+        try:
+            strm = int(val)
+        except (TypeError, ValueError):
+            return None
+        year_code = strm // 10
+        term_code = strm % 10
+        year = 1800 + year_code
+        term_map = {1: "Spring", 4: "Summer", 7: "Fall"}
+        term = term_map.get(term_code)
+        if term is None:
+            return None
+        return f"{term} {year}"
+
+    if "Strm" in df_course.columns:
+        df_course["Semester"] = df_course["Strm"].map(_decode_strm)
+    else:
+        df_course["Semester"] = None
+
+    # Fallback to explicit term/year labels
+    if df_course["Semester"].isna().all():
+        if "Term" in df_course.columns and "Year" in df_course.columns:
+            def _term_year(row):
+                term = str(row.get("Term") or "").strip()
+                year = str(row.get("Year") or "").strip()
+                if not term or not year:
+                    return None
+                return f"{term} {year}"
+            df_course["Semester"] = df_course.apply(_term_year, axis=1)
+
+    df_course = df_course[df_course["Semester"].notna()].copy()
+    if df_course.empty:
+        print(f"    ⚠️ No semester information for course {subject} {catalog}. Skipping history graph.")
+        return None
+
+    # normalise instructor names
+    if "Instructor" in df_course.columns:
+        df_course["Instructor"] = (
+            df_course["Instructor"].fillna("(no data)").astype(str).str.strip()
+        )
+    else:
+        df_course["Instructor"] = "(no data)"
+
+    # drop rows without GPA
+    df_course = df_course[df_course["Average_GPA"].notna()].copy()
+    if df_course.empty:
+        print(f"    ⚠️ No GPA data for course {subject} {catalog}. Skipping history graph.")
+        return None
+
+    # determine semester order ###################################################
+    term_order = {"Spring": 1, "Summer": 2, "Fall": 3}
+
+    def _semester_key(sem_str: str):
+        try:
+            term, year = sem_str.split()
+            year_int = int(year)
+        except Exception:
+            return (9999, 99)
+        return (year_int, term_order.get(term, 99))
+
+    semester_order = sorted(
+        df_course["Semester"].dropna().unique(),
+        key=_semester_key,
+    )
+
+    # aggregate GPA by semester and instructor ###################################
+    grouped = (
+        df_course.groupby(["Semester", "Instructor"], as_index=False)
+        .agg({"Average_GPA": "mean"})
+    )
+
+    instructors = [i for i in grouped["Instructor"].unique() if i != "(no data)"]
+
+    stats = (
+        grouped[grouped["Instructor"] != "(no data)"]
+        .groupby("Semester", as_index=False)
+        .agg(mean_gpa=("Average_GPA", "mean"), std_gpa=("Average_GPA", "std"))
+    )
+
+    if stats.empty:
+        print(f"    ⚠️ Not enough data to compute aggregate stats for {subject} {catalog}. Skipping history graph.")
+        return None
+
+    stats["std_gpa"] = stats["std_gpa"].fillna(0.0)
+
+    # Map semesters to numeric positions for plotting ############################
+    x_positions = np.arange(len(semester_order))
+    sem_to_x = {sem: idx for idx, sem in enumerate(semester_order)}
+
+    stats["x"] = stats["Semester"].map(sem_to_x)
+    stats = stats.sort_values("x")
+
+    all_gpas = grouped["Average_GPA"].dropna()
+    if all_gpas.empty:
+        y_min, y_max = 0.0, 4.33
+    else:
+        y_min = max(0.0, float(all_gpas.min()) - 0.1)
+        y_max = min(4.33, float(all_gpas.max()) + 0.1)
+
+    # Plotting ###################################################################
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=dpi)
+
+    # Shaded ±1 standard deviation band (grey zone)
+    upper = stats["mean_gpa"] + stats["std_gpa"]
+    lower = stats["mean_gpa"] - stats["std_gpa"]
+
+    x_vals = stats["x"].astype(float).values
+    upper_vals = upper.astype(float).values
+    lower_vals = lower.astype(float).values
+
+    ax.fill_between(
+        x_vals,
+        lower_vals,
+        upper_vals,
+        color=band_color,
+        alpha=band_alpha,
+        label="±1 SD",
+        zorder=1,
+    )
+
+    # Mean GPA line (thick)
+    ax.plot(
+        x_vals,
+        stats["mean_gpa"],
+        color=mean_color,
+        linewidth=mean_linewidth,
+        marker="D",
+        markersize=mean_markersize,
+        label="Average GPA",
+        zorder=3,
+    )
+
+    # Instructor lines with distinct color + marker + linestyle combinations
+    base_colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    color_cycle = itertools.cycle(base_colors)
+    style_cycle = itertools.cycle(
+        [(m, ls) for m in marker_options for ls in linestyle_options]
+    )
+
+    instructor_styles = {}
+    for inst in instructors:
+        marker, linestyle = next(style_cycle)
+        color = next(color_cycle)
+        instructor_styles[inst] = (marker, linestyle, color)
+
+    for inst in instructors:
+        sub = grouped[grouped["Instructor"] == inst].copy()
+        if sub.empty:
+            continue
+        # Ensure chronological order
+        sub["x"] = sub["Semester"].map(sem_to_x)
+        sub = sub.sort_values("x")
+
+        xs = sub["x"].astype(float).values
+        ys = sub["Average_GPA"].astype(float).values
+
+        marker, linestyle, color = instructor_styles[inst]
+
+        ax.plot(
+            xs,
+            ys,
+            marker=marker,
+            linestyle=linestyle,
+            color=color,
+            markersize=instructor_markersize,
+            linewidth=instructor_linewidth,
+            label=inst,
+            zorder=4,
+        )
+
+    # Axes and layout ###########################################################
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(semester_order, rotation=45, ha="right")
+    ax.set_ylim(y_min, y_max)
+    ax.set_xlim(-0.5, len(semester_order) - 0.5)
+    ax.set_ylabel("Average GPA")
+    ax.set_xlabel("Semester")
+
+    title_text = f"{subject} {catalog} Average GPA Over Time"
+    ax.set_title(title_text)
+
+    # Legend below the entire graph
+    handles, labels = ax.get_legend_handles_labels()
+    if handles:
+        ncol = min(4, len(labels))
+
+        # First lay out the axes, leaving room at the bottom
+        fig.tight_layout(rect=(0.0, 0.18, 1.0, 1.0))
+
+        # Then put the legend inside the reserved bottom band
+        fig.legend(
+            handles,
+            labels,
+            loc="lower center",           # bottom of legend
+            bbox_to_anchor=(0.5, 0.02),   # slightly above figure bottom
+            ncol=ncol,
+            frameon=False,
+            fontsize=8,
+        )
+    else:
+        fig.tight_layout()
+
+    # Save figure ###############################################################
+    subject_slug = _slug(subject)
+    catalog_slug = _slug(catalog)
+    filename = f"{subject_slug}_{catalog_slug}.png"
+    out_path = os.path.join(course_hist_dir, filename)
+
+    fig.savefig(out_path)
+    plt.close(fig)
+
+    print(f"    ✅ Generated course history graph: {out_path}")
     
-    #TODO
+    return out_path
 
 def generate_instructor_course_gpa_graph(
         config, 

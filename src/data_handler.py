@@ -473,3 +473,33 @@ def aggregate_for_row(
         "num_courses_csv": num_courses_csv,
         "num_courses_json": num_courses_json,
     }
+
+def get_unique_courses(csv_path):
+    """
+    return a dataframe of unique courses in the CSV
+
+    the df only has two columns (if you add more nothing should break though)
+        'Subject'
+        'Catalog Nbr'
+    """
+    if isinstance(csv_path, (list, tuple)):
+        if not csv_path:
+            raise ValueError("csv_path list/tuple is empty.")
+        csv_path_use = csv_path[0]
+    else:
+        csv_path_use = csv_path
+
+    df = pd.read_csv(csv_path_use, dtype=str)
+
+    required_cols = ["Subject", "Catalog Nbr"]
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise KeyError(f"Missing expected columns in CSV: {', '.join(missing)}")
+
+    result = df[required_cols].copy()
+    for c in required_cols:
+        result[c] = result[c].fillna("").astype(str).str.strip()
+
+    result = (result.drop_duplicates().sort_values(required_cols).reset_index(drop=True))
+
+    return result
