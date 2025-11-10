@@ -143,6 +143,13 @@ def clean_csv(csv_path: str) -> None:
     # 3. First/middle/last name columns from instructor column
     instr_col = _find_col(df, ["instructor", "primary instructor", "instructor name"])
     if instr_col:
+        df[instr_col] = (
+            df[instr_col]
+            .astype(str)
+            .str.strip()
+            .str.replace(r"\s*,\s*", ",", regex=True)
+        )
+
         splits = df[instr_col].apply(_split_instructor)
         first = splits.apply(lambda t: t[0])
         middle = splits.apply(lambda t: t[1])
