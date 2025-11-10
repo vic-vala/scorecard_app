@@ -142,7 +142,7 @@ def generate_course_grade_histogram(
     # build filename ####################################################
     department = _slug(course.get("Subject"))
     course_code = _slug(course.get("Catalog Nbr"))
-    professor = _slug(course.get("Instructor"))
+    professor = _slug(course.get("Instructor Last"))
     term = _slug(course.get("Term"))
     year = _slug(course.get("Year"))
 
