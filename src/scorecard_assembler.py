@@ -1,5 +1,8 @@
 import json
 import os
+import re
+import sys
+
 
 from pylatex import(
     Command,
@@ -14,11 +17,14 @@ from src import latex_sections
 #   everything in one class.
 class _ScorecardDoc:
 
-    def __init__(self, pdf_json, data_visx, output_filename):
-        self.doc = None
+    def __init__(self, csv_row, pdf_json, grade_hist, output_filename):
+        self.csv_row = csv_row
         self.pdf_json = pdf_json
-        self.data_visx = data_visx
+        self.grade_hist = grade_hist
         self.output_filename = output_filename
+
+        # Tex related fields
+        self.doc = None
         self.show_hdr_overview = False
         self.show_hdr_eval = False
         self.show_hdr_title = True
@@ -238,12 +244,14 @@ class _ScorecardDoc:
     # Assigning values used in grade distribution section
     def _add_grade_distr_fields(self):
 
-        # TODO: Once we are able to dynamically select the CSV, we can update all these
-        #   variables with self.csv[{filter}], for now just placeholders
-        grade_a_count = str(10)
+        """TODO: Once we are able to dynamically select the CSV, we can update all these
+           UPDATE: We have the csv row functionality, so now we just need to populate these fields
+           - if accessing a column's value, use .iloc[0] to avoid any depreciated functionality in the future
+        """
+        grade_a_count = int(self.csv_row['A'].iloc[0]) + int(self.csv_row['A+'].iloc[0]) + int(self.csv_row['A-'].iloc[0])
         grade_a_pct = f"10%"
         grade_a_delta = f"-2%"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeACount'), grade_a_count]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeACount'), str(grade_a_count)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeAPct'), grade_a_pct]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeADelta'), grade_a_delta]))
         
@@ -361,15 +369,43 @@ class _ScorecardDoc:
     def _add_grade_distribution_section(self):
         """Add the Grade Distribution tcolorbox section"""
         template = latex_sections.get_grade_distribution_section_template(
-            self.data_visx
+            self.grade_hist
         )
         self.doc.append(NoEscape(template))
+
+def get_fname_from_json_path(json_path):
+    fname_match = re.match((r".*/(.*)(?=\.json)"), json_path)
+
+    if fname_match:
+        return fname_match.group(1)
+    else:
+        print(f"Couldn't capture file name from json path for grade histogram sourcing.")
+        return None
+    
+def load_pdf_json(pdf_json_path):
+    # Attempt to load the file
+    try:
+        with open(pdf_json_path, 'r', encoding='utf-8') as f:
+            pdf_json = json.load(f)
+            return pdf_json
+    except FileNotFoundError:
+        print(f"Error: json file not found at: {pdf_json_path}.", file=sys.stderr)
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Error: Failed to decode json from {pdf_json_path}. Details: {e}", file=sys.stderr)
+        return None
      
 
-def assemble_scorecard(pdf_json, data_visx, tex_output_path, scorecard_output_path):
-        
+def assemble_scorecard(scorecard_set, histogram_dir, tex_output_path, scorecard_output_path):
+    # Source the grade histogram from the json path (similar naming structure)
+    histrogram_name = get_fname_from_json_path(scorecard_set[1])
+    histogram_full_path = os.path.join(histogram_dir, f"{histrogram_name}.png")
+
+    # Load the pdf json representation
+    pdf_json = load_pdf_json(scorecard_set[1])
+    
     # Generate the latex doc
-    latex_doc = _ScorecardDoc(pdf_json=pdf_json, data_visx=data_visx, output_filename="test")
+    latex_doc = _ScorecardDoc(csv_row=scorecard_set[0], pdf_json=pdf_json, grade_hist=histogram_full_path, output_filename=histrogram_name)
     latex_doc.doc_setup()
 
     # Save the latex doc to the temp folder in its subdirectory
@@ -378,10 +414,10 @@ def assemble_scorecard(pdf_json, data_visx, tex_output_path, scorecard_output_pa
     print(f"📝✅ Saved LaTeX to {full_output_path}")
 
     # Save the latex as a pdf now
-    pdf_filename = latex_doc.output_filename
-    full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
-    latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
-    print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
+    #pdf_filename = latex_doc.output_filename
+    #full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
+    #latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
+   # print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
 
 
 
