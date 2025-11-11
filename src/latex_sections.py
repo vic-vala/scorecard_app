@@ -132,7 +132,7 @@ def get_grade_distribution_section_template(grade_dist_image):
 				B & \GradeBCount & \GradeBPct & \autoD{\GradeBDelta} \\
 				C & \GradeCCount & \GradeCPct & \autoD{\GradeCDelta} \\
 				D & \GradeDCount & \GradeDPct & \autoD{\GradeDDelta} \\
-				F & \GradeFCount & \GradeFPct & \autoD{\GradeFDelta} \\
+				E & \GradeECount & \GradeEPct & \autoD{\GradeEDelta} \\
 				\bottomrule
 			\end{tabular}
 		\par\endgroup
