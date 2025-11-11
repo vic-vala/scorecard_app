@@ -1,5 +1,9 @@
 import json
 import os
+import re
+import sys
+import pandas as pd
+from typing import Any, Dict, Mapping, Optional, List, Tuple
 
 from pylatex import(
     Command,
@@ -14,11 +18,14 @@ from src import latex_sections
 #   everything in one class.
 class _ScorecardDoc:
 
-    def __init__(self, pdf_json, data_visx, output_filename):
-        self.doc = None
+    def __init__(self, csv_row, pdf_json, grade_hist, output_filename):
+        self.csv_row = csv_row
         self.pdf_json = pdf_json
-        self.data_visx = data_visx
+        self.grade_hist = grade_hist
         self.output_filename = output_filename
+
+        # Tex related fields
+        self.doc = None
         self.show_hdr_overview = False
         self.show_hdr_eval = False
         self.show_hdr_title = True
@@ -97,22 +104,25 @@ class _ScorecardDoc:
         course_name = f"{self.pdf_json['eval_info']['department']} {self.pdf_json['eval_info']['course']}"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseName'), course_name]))
         course_year = f"{self.pdf_json['eval_info']['year']}"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseYear'), course_year]))       
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseYear'), course_year]))
 
-        # TODO: Add functionality for including session for the term (A|B|C)
-        #   probably pull from a temp csv? Just having the term here in the meantime
-        course_term = f"{self.pdf_json['eval_info']['term']}"
+        # Term pulled form json, session pulled from csv row
+        course_session = str(self.csv_row['Session Code'].iloc[0])
+        course_term = f"{self.pdf_json['eval_info']['term']} {course_session}"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseTerm'), course_term]))
 
+        # Course code (5-digit one) pulled from json
         course_code = f"{self.pdf_json['eval_info']['course_number']}"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseCode'), course_code]))
         
         instructor = f"{self.pdf_json['eval_info']['professor']}"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\Instructor'), instructor]))
 
-        # TODO: Probably want to pull this from the data frame as well? Once we get
-        #   to clearly organizing the csvs, but just pulling from the json for now
-        course_size = f"{self.pdf_json['eval_info']['total_students']}"
+        # Baseline Text
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\BaselineText'), self.baseline_text]))
+
+        # Pulled from csv row
+        course_size = int(self.csv_row['Class Size'].iloc[0])
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseSize'), str(course_size)]))
 
         # TODO: Just a place holder number for now. Will need to calculate the pop. 
@@ -154,8 +164,6 @@ class _ScorecardDoc:
 
         median_grade_delta = f"+1"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\MedianGradeDelta'), median_grade_delta]))
-        median_grade = f"C-"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\MedianGrade'), median_grade]))
         
         # TODO: Calculate GPA (figure out what baseline the given course's GPA is being
         #   compared to)
@@ -187,7 +195,7 @@ class _ScorecardDoc:
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\DropPct'), drop_pct]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\DropDelta'), drop_delta]))
 
-        withdraw_count = 2
+        withdraw_count = int(self.csv_row['W'].iloc[0])
         withdraw_pct = f"2%"
         withdraw_delta = f"+2%"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\WithdrawNum'), str(withdraw_count)]))
@@ -238,42 +246,48 @@ class _ScorecardDoc:
     # Assigning values used in grade distribution section
     def _add_grade_distr_fields(self):
 
-        # TODO: Once we are able to dynamically select the CSV, we can update all these
-        #   variables with self.csv[{filter}], for now just placeholders
-        grade_a_count = str(10)
+        """
+           UPDATE: We have the csv row functionality, so now we just need to populate these fields
+           - if accessing a column's value, use .iloc[0] to avoid any depreciated functionality in the future
+        """
+
+        # Adding A, A+, A-
+        grade_a_count = int(self.csv_row['A'].iloc[0]) + int(self.csv_row['A+'].iloc[0]) + int(self.csv_row['A-'].iloc[0])
         grade_a_pct = f"10%"
         grade_a_delta = f"-2%"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeACount'), grade_a_count]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeACount'), str(grade_a_count)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeAPct'), grade_a_pct]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeADelta'), grade_a_delta]))
         
-        grade_b_count = str(46)
+        # Adding B+, B, B-
+        grade_b_count = int(self.csv_row['B'].iloc[0]) + int(self.csv_row['B+'].iloc[0]) + int(self.csv_row['B-'].iloc[0])
         grade_b_pct = f"72%"
         grade_b_delta = f"+1%"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBCount'), grade_b_count]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBCount'), str(grade_b_count)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBPct'), grade_b_pct]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBDelta'), grade_b_delta]))
         
-        grade_c_count = str(17)
+        # Available C grades to add : C, C+
+        grade_c_count = int(self.csv_row['C'].iloc[0]) + int(self.csv_row['C+'].iloc[0])
         grade_c_pct = f"14%"
         grade_c_delta = f"-1%"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCCount'), grade_c_count]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCCount'), str(grade_c_count)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCPct'), grade_c_pct]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCDelta'), grade_c_delta]))
         
-        grade_d_count = str(4)
+        grade_d_count = int(self.csv_row['D'].iloc[0])
         grade_d_pct = f"2%"
         grade_d_delta = f"+0%"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDCount'), grade_d_count]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDCount'), str(grade_d_count)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDPct'), grade_d_pct]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDDelta'), grade_d_delta]))
         
-        grade_f_count = str(4)
-        grade_f_pct = f"2%"
-        grade_f_delta = f"+1%"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeFCount'), grade_f_count]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeFPct'), grade_f_pct]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeFDelta'), grade_f_delta]))
+        grade_e_count = int(self.csv_row['E'].iloc[0])
+        grade_e_pct = f"2%"
+        grade_e_delta = f"+1%"
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeECount'), str(grade_e_count)]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeEPct'), grade_e_pct]))
+        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeEDelta'), grade_e_delta]))
 
         # TODO: Clearly define what we are trying to show here for the quarters
         q1 = str(4)
@@ -361,15 +375,60 @@ class _ScorecardDoc:
     def _add_grade_distribution_section(self):
         """Add the Grade Distribution tcolorbox section"""
         template = latex_sections.get_grade_distribution_section_template(
-            self.data_visx
+            self.grade_hist
         )
         self.doc.append(NoEscape(template))
+
+def get_fname_from_json_path(json_path):
+    fname_match = re.match((r".*/(.*)(?=\.json)"), json_path)
+
+    if fname_match:
+        return fname_match.group(1)
+    else:
+        print(f"Couldn't capture file name from json path for grade histogram sourcing.")
+        return None
+    
+def load_pdf_json(pdf_json_path):
+    # Attempt to load the file
+    try:
+        with open(pdf_json_path, 'r', encoding='utf-8') as f:
+            pdf_json = json.load(f)
+            return pdf_json
+    except FileNotFoundError:
+        print(f"Error: json file not found at: {pdf_json_path}.", file=sys.stderr)
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Error: Failed to decode json from {pdf_json_path}. Details: {e}", file=sys.stderr)
+        return None
+def get_agg_data():
+    print()
      
 
-def assemble_scorecard(pdf_json, data_visx, tex_output_path, scorecard_output_path):
-        
+def assemble_scorecard(
+        scorecard_set: Tuple[pd.DataFrame, str], 
+        histogram_dir: str, 
+        tex_output_path: str, 
+        scorecard_output_path: str
+        ):
+    """
+    Generates the .tex for the scorecard & saves it as a pdf.
+
+    Args:
+        scorecard_set (`tuple` of (`pd.Dataframe`, `str`)):
+            - The first element [0] is the df of the matched csv row
+            - The second element [1] is the path to the json file of the parsed pdf.
+    Todo:
+        Implement the aggregate data metrics
+    """
+    # Source the grade histogram from the json path (similar naming structure)
+    histrogram_name = get_fname_from_json_path(scorecard_set[1])
+    histogram_full_path = os.path.join(histogram_dir, f"{histrogram_name}.png")
+
+    # Load the pdf json representation
+    pdf_json = load_pdf_json(scorecard_set[1])
+    
     # Generate the latex doc
-    latex_doc = _ScorecardDoc(pdf_json=pdf_json, data_visx=data_visx, output_filename="test")
+    latex_doc = _ScorecardDoc(csv_row=scorecard_set[0], pdf_json=pdf_json, grade_hist=histogram_full_path, output_filename=histrogram_name)
     latex_doc.doc_setup()
 
     # Save the latex doc to the temp folder in its subdirectory
@@ -378,10 +437,10 @@ def assemble_scorecard(pdf_json, data_visx, tex_output_path, scorecard_output_pa
     print(f"📝✅ Saved LaTeX to {full_output_path}")
 
     # Save the latex as a pdf now
-    pdf_filename = latex_doc.output_filename
-    full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
-    latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
-    print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
+    #pdf_filename = latex_doc.output_filename
+    #full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
+    #latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
+   # print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
 
 
 
