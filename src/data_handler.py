@@ -2,6 +2,7 @@ import os
 import json
 import math
 import re
+import statistics
 from typing import Any, Dict, Mapping, Optional, List, Tuple
 import pandas as pd
 
@@ -348,9 +349,15 @@ def aggregate_for_row(
         g = compute_course_gpa(r, gpa_scale)
         if g is not None:
             gpas.append(g)
-    gpa_value: Optional[float] = (
-        sum(gpas) / len(gpas) if gpas else None
-    )
+
+    if gpas:
+        gpa_value: Optional[float] = sum(gpas) / len(gpas)
+        gpa_std: Optional[float] = (
+            statistics.pstdev(gpas) if len(gpas) > 1 else 0.0
+        )
+    else:
+        gpa_value = None
+        gpa_std = None
 
     # Grade distribution and quartiles from CSV
     grade_percentages = {g: 0.0 for g in GRADE_COLS}
@@ -469,6 +476,7 @@ def aggregate_for_row(
     return {
         "aggregate_name": aggregate_name,
         "gpa": gpa_value,
+        "gpa_std": gpa_std,
         "median_grade": median_grade,
         "q1_grade": q1_grade,
         "q3_grade": q3_grade,
