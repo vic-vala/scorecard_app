@@ -63,17 +63,17 @@ def load_user_prompt(llm_dir, pdf_json):
     return user_prompt
 
 
-def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
+def run_llm(gguf_path, pdf_json, llm_dir, temp_dir, *, output_json_path=None):
     if not os.path.exists(gguf_path):
         print(f"GGUF model not found at {gguf_path}. Skipping LLM analysis.", file=sys.stderr)
-        return
+        return None
 
     # Retrieve system prompt
     system_prompt = load_system_prompt(llm_dir)
 
     if not system_prompt:
         print("Could not load system prompts, skipping LLM analysis", file=sys.stderr)
-        return
+        return None
     
     ## Instantiate LLM
     try:
@@ -89,13 +89,13 @@ def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
         )
     except Exception as e:
             print(f"Error running instantiation the model:{e}")
-            return
+            return None
     
     # Retrieve user prompt (contains likes, dislikes, comments etc.)
     user_prompt = load_user_prompt(llm_dir, pdf_json)
     if not user_prompt:
         print("Could not load user prompt, skipping LLM analysis", file=sys.stderr)
-        return
+        return None
     
     # Messages for the LLM
     messages = [
@@ -121,15 +121,23 @@ def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
                 full_response_text.append(text)
 
         llm_response = "".join(full_response_text)
-        pdf_json['llm_summary'] = llm_response
         print("LLM response completed!")
 
         # Write the complete, .json to the temporary directory
-        os.makedirs(os.path.dirname(temp_dir), exist_ok=True)
-        temp_path = f"{temp_dir}/temp.json"
-        with open(temp_path, "w", encoding="utf-8") as out_f:
-            json.dump(pdf_json, out_f, indent=4)
-            print(f"LLM summary added to JSON and saved to temporary file: %s" % ("temp"))
+        target_path = output_json_path
+        if target_path:
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        else:
+            os.makedirs(temp_dir, exist_ok=True)
+            target_path = os.path.join(temp_dir, "temp.json")
+
+        payload = dict(pdf_json)
+        payload["llm_summary"] = llm_response
+        with open(target_path, "w", encoding="utf-8") as out_f:
+            json.dump(payload, out_f, indent=4)
+            print(f"LLM summary added to JSON and saved to temporary file: {target_path}")
+        return llm_response
             
     except Exception as e:
-        print(f"Error occured during LLM chat completion")
+        print(f"Error occured during LLM chat completion: {e}", file=sys.stderr)
+        return None

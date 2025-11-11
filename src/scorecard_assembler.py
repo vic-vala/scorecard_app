@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 
 from pylatex import(
@@ -366,22 +366,32 @@ class _ScorecardDoc:
         self.doc.append(NoEscape(template))
      
 
-def assemble_scorecard(pdf_json, data_visx, tex_output_path, scorecard_output_path):
-        
-    # Generate the latex doc
-    latex_doc = _ScorecardDoc(pdf_json=pdf_json, data_visx=data_visx, output_filename="test")
+def assemble_scorecard(
+    pdf_json,
+    data_visx,
+    tex_output_path,
+    scorecard_output_path,
+    *,
+    output_filename="scorecard",
+):
+    """Render a LaTeX scorecard for a single course selection."""
+    if not output_filename:
+        output_filename = "scorecard"
+
+    os.makedirs(tex_output_path, exist_ok=True)
+    os.makedirs(scorecard_output_path, exist_ok=True)
+
+    latex_doc = _ScorecardDoc(
+        pdf_json=pdf_json,
+        data_visx=data_visx,
+        output_filename=output_filename,
+    )
     latex_doc.doc_setup()
 
-    # Save the latex doc to the temp folder in its subdirectory
-    full_output_path = os.path.join(tex_output_path, latex_doc.output_filename)
-    latex_doc.doc.generate_tex(full_output_path)
-    print(f"📝✅ Saved LaTeX to {full_output_path}")
+    tex_base_path = os.path.join(tex_output_path, latex_doc.output_filename)
+    latex_doc.doc.generate_tex(tex_base_path)
+    print(f"[scorecard] Saved LaTeX to {tex_base_path}.tex")
 
-    # Save the latex as a pdf now
-    pdf_filename = latex_doc.output_filename
-    full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
-    latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
-    print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
-
-
-
+    pdf_base_path = os.path.join(scorecard_output_path, latex_doc.output_filename)
+    latex_doc.doc.generate_pdf(pdf_base_path, clean_tex=False, compiler='pdflatex')
+    print(f"[scorecard] Saved PDF Scorecard to {pdf_base_path}.pdf")
