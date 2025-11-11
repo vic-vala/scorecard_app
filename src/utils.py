@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from typing import Any, Mapping
 
 CONFIG_PATH = "./configuration/config.json"
 
@@ -53,3 +54,71 @@ def get_pdf_json(parsed_pdf_dir, s):
     except json.JSONDecodeError as e:
         print(f"Error: Failed to decode json from {report_path}. Details: {e}", file=sys.stderr)
         return None
+
+
+def _stringify(value: Any) -> str:
+    """Return a stripped string, normalizing None/NaN to an empty string."""
+    if value is None:
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    text = str(value).strip()
+    if text.lower() in {"nan", "none", "null"}:
+        return ""
+    return text
+
+
+def _slugify_token(token: str) -> str:
+    """Convert a token into an alphanumeric slug using underscores as separators."""
+    cleaned = []
+    for ch in token:
+        if ch.isalnum():
+            cleaned.append(ch)
+        elif ch in (" ", "-", "_"):
+            cleaned.append("_")
+    return "".join(cleaned).strip("_")
+
+
+def _extract_instructor_last(row: Mapping[str, Any]) -> str:
+    """Derive the instructor’s last name, falling back to the combined name."""
+    last = _stringify(row.get("Instructor Last"))
+    if last:
+        return last
+    instructor = _stringify(row.get("Instructor"))
+    if not instructor:
+        return ""
+    if "," in instructor:
+        return instructor.split(",", 1)[0]
+    tokens = instructor.split()
+    return tokens[-1] if tokens else ""
+
+
+def build_course_slug(row: Mapping[str, Any]) -> str:
+    """Build the canonical identifier (Subject_Catalog_Instructor_Term_Year_Class)."""
+    subject = _slugify_token(_stringify(row.get("Subject")).upper())
+    catalog = _slugify_token(_stringify(row.get("Catalog Nbr")))
+    instructor_last = _slugify_token(_extract_instructor_last(row).capitalize())
+    term = _slugify_token(_stringify(row.get("Term")).capitalize())
+    year = _slugify_token(_stringify(row.get("Year")))
+    class_nbr = (
+        _stringify(row.get("Class Nbr"))
+        or _stringify(row.get("Course Nbr"))
+        or _stringify(row.get("Section"))
+    )
+    class_nbr = _slugify_token(class_nbr)
+    parts = [p for p in (subject, catalog, instructor_last, term, year, class_nbr) if p]
+    return "_".join(parts) or "scorecard"
+
+
+def build_course_json_filename(row: Mapping[str, Any]) -> str:
+    """Return the expected JSON filename for the selection row."""
+    return f"{build_course_slug(row)}.json"
+
+
+def resolve_course_json_path(row: Mapping[str, Any], parsed_pdf_dir: str) -> str:
+    """Return the absolute JSON path for a row or raise FileNotFoundError if missing."""
+    filename = build_course_json_filename(row)
+    path = os.path.join(parsed_pdf_dir, filename)
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Could not locate JSON for course selection: {path}")
+    return path
