@@ -2,6 +2,7 @@ import os
 import sys
 import json
 from llama_cpp import Llama
+from src.utils import load_pdf_json
 
 # Hardware/Computing Parameters
 N_CTX        = int(os.environ.get("N_CTX", 32768)) # Change this for laptops?
@@ -63,7 +64,7 @@ def load_user_prompt(llm_dir, pdf_json):
     return user_prompt
 
 
-def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
+def run_llm(gguf_path, scorecards_to_generate, llm_dir, temp_dir):
     if not os.path.exists(gguf_path):
         print(f"GGUF model not found at {gguf_path}. Skipping LLM analysis.", file=sys.stderr)
         return
@@ -90,46 +91,48 @@ def run_llm(gguf_path, pdf_json, llm_dir, temp_dir):
     except Exception as e:
             print(f"Error running instantiation the model:{e}")
             return
-    
-    # Retrieve user prompt (contains likes, dislikes, comments etc.)
-    user_prompt = load_user_prompt(llm_dir, pdf_json)
-    if not user_prompt:
-        print("Could not load user prompt, skipping LLM analysis", file=sys.stderr)
-        return
-    
-    # Messages for the LLM
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user",   "content": user_prompt},
-    ]
-    try:
-        stream = llm.create_chat_completion(
-            messages=messages,
-            max_tokens=MAX_TOKENS,
-            temperature=TEMP,
-            top_p=TOP_P,
-            repeat_penalty=REPEAT_PEN,
-            min_p=MIN_P,
-            stream=True,
-        )
-        print("Generating LLM response...")
-        full_response_text = []
-        for chunk in stream:
-            # Get content from the 'delta' key in each chunk
-            text = chunk["choices"][0]["delta"].get("content", "")
-            if text:
-                full_response_text.append(text)
+    for scorecard_set in scorecards_to_generate:
+        pdf_json_path = scorecard_set[1]
+        pdf_json = load_pdf_json(pdf_json_path)
+        # Retrieve user prompt (contains likes, dislikes, comments etc.)
+        user_prompt = load_user_prompt(llm_dir, pdf_json)
+        if not user_prompt:
+            print("Could not load user prompt, skipping LLM analysis", file=sys.stderr)
+            return
+        
+        # Messages for the LLM
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_prompt},
+        ]
+        try:
+            stream = llm.create_chat_completion(
+                messages=messages,
+                max_tokens=MAX_TOKENS,
+                temperature=TEMP,
+                top_p=TOP_P,
+                repeat_penalty=REPEAT_PEN,
+                min_p=MIN_P,
+                stream=True,
+            )
+            print("Generating LLM response...")
+            full_response_text = []
+            for chunk in stream:
+                # Get content from the 'delta' key in each chunk
+                text = chunk["choices"][0]["delta"].get("content", "")
+                if text:
+                    full_response_text.append(text)
 
-        llm_response = "".join(full_response_text)
-        pdf_json['llm_summary'] = llm_response
-        print("LLM response completed!")
+            llm_response = "".join(full_response_text)
+            pdf_json['llm_summary'] = llm_response
+            print("LLM response completed!")
 
-        # Write the complete, .json to the temporary directory
-        os.makedirs(os.path.dirname(temp_dir), exist_ok=True)
-        temp_path = f"{temp_dir}/temp.json"
-        with open(temp_path, "w", encoding="utf-8") as out_f:
-            json.dump(pdf_json, out_f, indent=4)
-            print(f"LLM summary added to JSON and saved to temporary file: %s" % ("temp"))
+            # Write the complete, .json to the temporary directory
+            os.makedirs(os.path.dirname(temp_dir), exist_ok=True)
+            temp_path = f"{temp_dir}/temp.json"
+            with open(temp_path, "w", encoding="utf-8") as out_f:
+                json.dump(pdf_json, out_f, indent=4)
+                print(f"LLM summary added to JSON and saved to temporary file: %s" % ("temp"))
             
-    except Exception as e:
-        print(f"Error occured during LLM chat completion")
+        except Exception as e:
+            print(f"Error occured during LLM chat completion")
