@@ -5,6 +5,14 @@ import sys
 CONFIG_PATH = "./configuration/config.json"
 
 def load_config(path=CONFIG_PATH):
+    """
+    Loads the config file used to drive the application
+
+    Args:
+        path (`str`): The path to the config file
+
+    Returns: Deserialized json as Python object (`Dict`)
+    """
     if not os.path.exists(path):
         raise FileNotFoundError(f"Config file not found at: {path}")
     with open(path, 'r', encoding="utf-8") as f:
@@ -34,22 +42,23 @@ def verify_directories(paths):
 
     print("Directory initialization complete\n")
 
-def get_pdf_json(parsed_pdf_dir, s):
-    json_filename = None
+def load_pdf_json(pdf_json_path):
+    """
+    Loads json from a given path
 
-    json_filename = f"{s['department']}_{s['cata']}_{s['professor1']}_{s['sem']}_{s['year']}_{s['course_num']}.json"
+    Args:
+        pdf_json_path (`str`):
     
-    report_path = os.path.join(parsed_pdf_dir, json_filename)
-
-    # 3. Attempt to load the file
+    Returns:
+        Deserialized json as Python object (`Dict`)
+    """
     try:
-        with open(report_path, 'r', encoding='utf-8') as f:
+        with open(pdf_json_path, 'r', encoding='utf-8') as f:
             pdf_json = json.load(f)
-            print(f"Successfully loaded report: {report_path}")
             return pdf_json
     except FileNotFoundError:
-        print(f"Error: json file not found at: {report_path}.\nTry changing 'professor1' in the config file.", file=sys.stderr)
+        print(f"Error: json file not found at: {pdf_json_path}.", file=sys.stderr)
         return None
     except json.JSONDecodeError as e:
-        print(f"Error: Failed to decode json from {report_path}. Details: {e}", file=sys.stderr)
+        print(f"Error: Failed to decode json from {pdf_json_path}. Details: {e}", file=sys.stderr)
         return None
