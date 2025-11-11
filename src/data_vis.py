@@ -327,6 +327,10 @@ def generate_course_history_graph(
         plot_cfg.get("instructor_linewidth", plot_cfg.get("marker_edge_width", 2.0))
     )
 
+    instructor_connect_points = str(
+        plot_cfg.get("course_history_connect_points", "true")
+    ).lower() == "true"
+
     # Marker / linestyle options for instructors
     marker_options = plot_cfg.get(
         "instructor_markers",
@@ -529,12 +533,14 @@ def generate_course_history_graph(
         ys = sub["Average_GPA"].astype(float).values
 
         marker, linestyle, color = instructor_styles[inst]
+        
+        line_style = linestyle if instructor_connect_points else "None"
 
         ax.plot(
             xs,
             ys,
             marker=marker,
-            linestyle=linestyle,
+            linestyle=line_style,
             color=color,
             markersize=instructor_markersize,
             linewidth=instructor_linewidth,

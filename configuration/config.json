@@ -21,6 +21,9 @@
         "overwrite_csv": "true",
         "overwrite_json": "true"
     },
+    "course_history_graph": {
+        "course_history_connect_points": "false"
+    },
     "data_vis_settings": {
         "comparison_type": "Professor_vs_Avg",
         "professor1": "1,Professor",
