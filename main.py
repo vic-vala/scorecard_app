@@ -47,8 +47,9 @@ if __name__ == "__main__":
 
         # Use CSV/PDF overlap to find viable scorecards
         print("🔗 Finding viable courses for scorecard creation")
-        viable_scorecards = data_handler.viable_scorecards(paths['parsed_pdf_dir'],csv_path[0])
+        viable_scorecards_tuple = data_handler.viable_scorecards(paths['parsed_pdf_dir'],csv_path[0])
 
+        viable_scorecards = viable_scorecards_tuple[0]
         # Course scorecard selection GUI
         print("🖥️ Opening Scorecard Selection GUI")
         selected_scorecard_courses = select_rows_gui.select_rows_gui(viable_scorecards)
@@ -84,20 +85,17 @@ if __name__ == "__main__":
             csv_path[0], 
             selected_history_courses)
 
+        # List of this tuple: (csv row, matching json pdf)
+        scorecards_to_generate = viable_scorecards_tuple[1]
         # TODO: Assemble & Save Scorecard PDF
         print("📝 Generating LaTeX")
-        # Just using the json to populate the latex for now, we will need to include
-        #   a csv at some point. Also will want to pivot away from using data vis 
-        #       settings from config. Just using for now to illustrate dynamic latex 
-        #           generation
-        pdf_json_2 = utils.get_pdf_json(paths['parsed_pdf_dir'], data_vis_settings) 
-        test_image = "./temporary_files/images/cat_driving_car.jpg"
-        scorecard_assembler.assemble_scorecard(
-            pdf_json_2,
-            test_image,
-            tex_output_path=paths['tex_dir'],
-            scorecard_output_path=paths['scorecard_dir']
-            )
+        # Iterate through the scorecards to generate one at a time
+        for scorecard_set in scorecards_to_generate:
+            scorecard_assembler.assemble_scorecard(
+                scorecard_set=scorecard_set, 
+                histogram_dir=paths['grade_histogram_dir'],
+                tex_output_path=paths['tex_dir'],
+                scorecard_output_path=paths['scorecard_dir'])
 
         # TODO: add cleanup function for temp in utils
     except Exception as e:
