@@ -349,13 +349,9 @@ def generate_course_history_graph(
     else:
         csv_path_use = csv_path
 
-    # Load CSV and compute GPA per row ############################################
-    df = pd.read_csv(csv_path_use, dtype=str)
-
-    def _row_gpa(row):
-        return data_handler.compute_course_gpa(row, data_handler.gpa_scale)
-
-    df["Average_GPA"] = df.apply(_row_gpa, axis=1)
+    # Load CSV and use precomputed GPA ###########################################
+    df = pd.read_csv(csv_path_use)
+    df["Average_GPA"] = pd.to_numeric(df["GPA"], errors="coerce")
 
     # Filter for the requested course #############################################
     subject = str(course.get("Subject") or "").strip()

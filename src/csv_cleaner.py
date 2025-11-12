@@ -81,7 +81,6 @@ def _split_instructor(name: str) -> Tuple[str, str, str]:
     middle = " ".join(tokens[1:-1]) if len(tokens) > 2 else ""
     return first, middle, last
 
-
 def clean_csv(csv_path: str) -> None:
     """
     1. Get rid of "total" rows with no actual course info
@@ -89,6 +88,7 @@ def clean_csv(csv_path: str) -> None:
     3. First/middle/last name columns from instructor column
     4. Handling of empty cels where numbers are expected (replace with 0)
     5. Finding any rows that are still invalid after all of that (just prints them for now)
+    6. Compute GPA as a new column
     """
     # read as strings to preserve raw values
     df = pd.read_csv(csv_path, dtype=str, keep_default_na=False, na_values=["", " "])
@@ -208,6 +208,27 @@ def clean_csv(csv_path: str) -> None:
             numeric = pd.to_numeric(s, errors="coerce").fillna(0)
             # cast to Int64 to preserve integers and null-safety
             df[col] = numeric.astype("Int64")
+        
+        # 6. compute GPA
+        letter_grade_cols = [c for c in grade_cols if c in gpa_scale]
+
+        if letter_grade_cols:
+            grade_counts = df[letter_grade_cols].astype("float64")
+
+            # (exclude W, I, NR, etc)
+            total_counts = grade_counts.sum(axis=1)
+            total_points = pd.Series(0.0, index=df.index)
+            for col in letter_grade_cols:
+                total_points += grade_counts[col] * gpa_scale[col]
+
+            total_counts_safe = total_counts.replace({0: np.nan})
+            gpa = (total_points / total_counts_safe).round(3)
+
+            if "Class Size" in df.columns:
+                insert_at = df.columns.get_loc("Class Size")
+                df.insert(insert_at, "GPA", gpa)
+            else:
+                df["GPA"] = gpa
 
     df.to_csv(csv_path, index=False)
 

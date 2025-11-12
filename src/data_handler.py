@@ -6,6 +6,18 @@ import statistics
 from typing import Any, Dict, Mapping, Optional, List, Tuple
 import pandas as pd
 
+gpa_scale = {
+    "A+": 4.33, "A": 4.0, "A-": 3.67,
+    "B+": 3.33, "B": 3.0, "B-": 2.67,
+    "C+": 2.33, "C": 2.0, "D": 1.0, "E": 0.0,
+}
+
+GRADE_COLS = [
+    "A+", "A", "A-", "B+", "B", "B-",
+    "C+", "C", "D", "E",
+    "EN", "EU", "I", "NR", "NR.1",
+    "W", "X", "XE", "Y", "Z",
+]
 
 def _parse_filename(filename: str):
     """
@@ -132,19 +144,6 @@ def get_instructors(csv_path: str) -> pd.DataFrame:
 
     return result
 
-gpa_scale = {
-    "A+": 4.33, "A": 4.0, "A-": 3.67,
-    "B+": 3.33, "B": 3.0, "B-": 2.67,
-    "C+": 2.33, "C": 2.0, "D": 1.0, "E": 0.0,
-}
-
-GRADE_COLS = [
-    "A+", "A", "A-", "B+", "B", "B-",
-    "C+", "C", "D", "E",
-    "EN", "EU", "I", "NR", "NR.1",
-    "W", "X", "XE", "Y", "Z",
-]
-
 def _is_true(val: Any) -> bool:
     return str(val).lower() == "true"
 
@@ -174,6 +173,11 @@ def _same_hundred_level(cat1: Any, cat2: Any) -> bool:
 
 def compute_course_gpa(row_like: Mapping[str, Any], scale: Dict[str, float]) -> Optional[float]:
     """
+    THIS FUNCTION IS DEPRECIATED!!! 
+    csv_cleaner computes GPAs and adds it as a column "GPA"
+    I'm keeping this around but you shouldn't be using it probably
+
+    (old documentation)
     compute GPA for a single course row from CSV data
     uses gpa_scale and only A+ through E, ignores EN EU W I etc.
     """
@@ -192,7 +196,6 @@ def compute_course_gpa(row_like: Mapping[str, Any], scale: Dict[str, float]) -> 
     if total_count == 0:
         return None
     return total_points / total_count
-
 
 def describe_aggregate(
     comparison: Dict[str, Any],
@@ -264,7 +267,6 @@ def describe_aggregate(
         return f"All Available {main} Courses"
     else:
         return "All Available Courses"
-
 
 def aggregate_for_row(
     comparison: Dict[str, Any],
@@ -343,12 +345,7 @@ def aggregate_for_row(
     matched_df = df[mask].copy()
     num_courses_csv = len(matched_df)
 
-    # GPA across matched CSV rows
-    gpas = []
-    for _, r in matched_df.iterrows():
-        g = compute_course_gpa(r, gpa_scale)
-        if g is not None:
-            gpas.append(g)
+    gpas = pd.to_numeric(matched_df["GPA"], errors="coerce").dropna().tolist()
 
     if gpas:
         gpa_value: Optional[float] = sum(gpas) / len(gpas)
