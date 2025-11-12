@@ -59,7 +59,13 @@ def generate_data_visualization(
     )
 
 def _slug(value: Any, fallback: str = "NA") -> str:
-    # Turn text into filename safe stuff
+    """
+    Convery an arbitrary value to a filename safe string
+    - Replaces space with underscores
+    - Convert to a string
+    - Strip leading/trailing whitespace
+    - Remove all non letter/digit/underscores
+    """
     if value is None:
         return fallback
     s = str(value).strip()
@@ -70,7 +76,9 @@ def _slug(value: Any, fallback: str = "NA") -> str:
     return s or fallback
 
 def _get_numeric(course: Mapping[str, Any], key: str) -> float:
-    # get numeric grade count from course row
+    """
+    Go from a course (row in the CSV) and a key to a float safely
+    """
     raw = course.get(key)
     if raw is None or raw == "":
         return 0.0

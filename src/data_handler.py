@@ -126,6 +126,9 @@ def viable_scorecards(json_dir: str, csv_path: str) -> Tuple[pd.DataFrame, List[
     return result, matched_set
 
 def get_instructors(csv_path: str) -> pd.DataFrame:
+    """
+    returns a DataFrame of all unique instructors and how many course sessions they have
+    """
     df = pd.read_csv(csv_path, dtype=str)
 
     cols = ["Instructor", "Instructor First", "Instructor Middle", "Instructor Last"]
@@ -145,13 +148,27 @@ def get_instructors(csv_path: str) -> pd.DataFrame:
     return result
 
 def _is_true(val: Any) -> bool:
+    """
+    True if str(val).lower() == "true"
+
+    Use this for .json config stuff
+    """
     return str(val).lower() == "true"
 
 def _is_hundred(val: Any) -> bool:
+    """
+    True if str(val).lower() == "hundred"
+    
+    This is for reading match_catalog_number in the config.json, since it can be "true", "false", or "hundred"
+    """
     return str(val).lower() == "hundred"
 
 def _parse_catalog_int(value: Any) -> Optional[int]:
-    """extract leading integer from a catalog string, like '470' or '4DE'."""
+    """
+    extract leading integer from a catalog string, like '470' or '4DE'
+
+    this is useful for when match_catalog_number = "hundred"
+    """
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return None
     s = str(value).strip()
@@ -164,7 +181,11 @@ def _parse_catalog_int(value: Any) -> Optional[int]:
         return None
 
 def _same_hundred_level(cat1: Any, cat2: Any) -> bool:
-    """return True if two catalog numbers are in the same x00 x99 band"""
+    """
+    return True if two catalog numbers are in the same x00 x99 band
+    
+    this is used when match_catalog_number == "hundred"
+    """
     n1 = _parse_catalog_int(cat1)
     n2 = _parse_catalog_int(cat2)
     if n1 is None or n2 is None:
@@ -175,7 +196,8 @@ def compute_course_gpa(row_like: Mapping[str, Any], scale: Dict[str, float]) -> 
     """
     THIS FUNCTION IS DEPRECIATED!!! 
     csv_cleaner computes GPAs and adds it as a column "GPA"
-    I'm keeping this around but you shouldn't be using it probably
+    
+    Don't use this, it will be removed eventually
 
     (old documentation)
     compute GPA for a single course row from CSV data
