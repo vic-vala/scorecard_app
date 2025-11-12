@@ -19,27 +19,44 @@ def generate_data_visualization(
         csv_path,
         selected_history_courses,
 ):
-    print("  🏫 Generating Course Data Visualizations") ##############################################
-    for _, course in selected_scorecard_courses.iterrows():
-        generate_course_grade_histogram(config, course, csv_path)
+    """
+    This function automates the creation of all data vis images
+    from a list of courses, sessions, and professors
 
-    print("  🕰️ Generating Course History Graphs") ###################################################
-    if isinstance(csv_path, (list, tuple)):
-        if not csv_path:
-            raise ValueError("csv_path list/tuple is empty.")
-        csv_path_for_history = csv_path[0]
-    else:
-        csv_path_for_history = csv_path
+    It takes in the config and csv path as well
+    """
 
-    if selected_history_courses is None or selected_history_courses.empty:
-        print("  📉 No courses selected for history graphs. Skipping course history generation.")
-    else:
-        for _, course in selected_history_courses.iterrows():
-            generate_course_history_graph(config, course, csv_path_for_history)
+    def _generate(df, start_msg, skip_msg, func, path):
+        print(start_msg)
+        if df is None or df.empty:
+            print(skip_msg)
+            return
+        for _, item in df.iterrows():
+            func(config, item, path)
 
-    print("  👨‍🏫 Generating Instructor Data Visualizations") ##########################################
-    for _, instructor in selected_scorecard_instructors.iterrows():
-        generate_instructor_course_gpa_graph(config, instructor, csv_path)
+    _generate(
+        selected_scorecard_courses,
+        "  🏫 Generating Course Data Visualizations", 
+        "  ⛔ No courses selected for course data visualizations. Skipping course data visualization generation.",
+        generate_course_grade_histogram,
+        csv_path,
+    )
+
+    _generate(
+        selected_history_courses,
+        "  🕰️ Generating Course History Graphs", 
+        "  ⛔ No courses selected for history graphs. Skipping course history generation.",
+        generate_course_history_graph,
+        csv_path,
+    )
+
+    _generate(
+        selected_scorecard_instructors,
+        "  👨‍🏫 Generating Instructor Data Visualizations", 
+        "  ⛔ No instructors selected for instructor visualizations. Skipping instructor data visualization generation.",
+        generate_instructor_course_gpa_graph,
+        csv_path,
+    )
 
 def _slug(value: Any, fallback: str = "NA") -> str:
     # Turn text into filename safe stuff
