@@ -615,13 +615,234 @@ def generate_course_history_graph(
     return out_path
 
 def generate_instructor_course_gpa_graph(
-        config, 
+        config: Mapping[str, Any],
         instructor: Mapping[str, Any],
-        csv_path
+        csv_path,
 ):
-    
-    name = str(instructor.get("Instructor", "")).strip()
+    """
+    GPA difference versus aggregate baseline graph for each course for a given professor
 
-    print(f"    🟧 Placeholder - Generate instructor course GPA graph for {name}") 
-    
-    #TODO
+    X axis = Course sessions, sorted by Strm (functionally, by time)
+    Y axis = delta against aggregate
+
+    Output file:
+      {Instructor Last}_{Instructor First}.png
+    written into instructor_course_gpa_graph_dir.
+
+    TODO: Split this into multiple pages
+    Expect this output file to end in _1, _2, etc. later, when this is done
+    Talk to Joey before integrating these files into LaTeX!!!
+    """
+    # paths and config options ###################################################
+    paths = config.get("paths", {}) or config.get("PATHS", {})
+
+    instr_dir = (
+        config.get("instructor_course_gpa_graph_dir")
+        or paths.get("instructor_course_gpa_graph_dir")
+        or paths.get("instructor_course_gpa_dir")
+    )
+    if not instr_dir:
+        raise KeyError(
+            "instructor_course_gpa_graph_dir not found in config or config['paths']."
+        )
+    os.makedirs(instr_dir, exist_ok=True)
+
+    json_dir = paths.get("parsed_pdf_dir") or paths.get("json_dir")
+    if not json_dir:
+        raise KeyError("parsed_pdf_dir/json_dir not found in config['paths'].")
+
+    comparison = (
+        config.get("comparison")
+        or config.get("baseline_comparison")
+        or {}
+    )
+
+    plot_cfg = (
+        config.get("plots", {}).get("instructor_course_gpa_graph", {})
+        or config.get("instructor_course_gpa_graph", {})
+        or {}
+    )
+
+    # try to fit into typical 8.5x11 inches paper
+    dpi = int(plot_cfg.get("dpi", 100))
+    width_px = int(plot_cfg.get("width_px", 850))
+    height_px = int(plot_cfg.get("height_px", 1100))
+    fig_width = width_px / dpi
+    fig_height = height_px / dpi
+
+    # colors
+    positive_color = plot_cfg.get("positive_color", "#51A058")   # above baseline
+    negative_color = plot_cfg.get("negative_color", "#d7263d")   # below baseline
+
+    zero_line_color = plot_cfg.get("zero_line_color", "#000000")
+    zero_linewidth = float(plot_cfg.get("zero_linewidth", 1.5))
+    bar_height = float(plot_cfg.get("bar_height", 0.8))
+    x_margin = float(plot_cfg.get("x_margin", 0.05))
+
+    # normalize csv_path #########################################################
+    if isinstance(csv_path, (list, tuple)):
+        if not csv_path:
+            print("    ⚠️ csv_path list/tuple is empty. Skipping instructor GPA graph.")
+            return None
+        csv_path_use = csv_path[0]
+    else:
+        csv_path_use = csv_path
+
+    # load CSV and filter to this instructor #####################################
+    df = pd.read_csv(csv_path_use)
+
+    inst_name = str(instructor.get("Instructor", "")).strip()
+    inst_first = str(instructor.get("Instructor First", "")).strip()
+    inst_middle = str(instructor.get("Instructor Middle", "")).strip()
+    inst_last = str(instructor.get("Instructor Last", "")).strip()
+
+    # normalize instructor columns in CSV
+    for col in ["Instructor", "Instructor First", "Instructor Middle", "Instructor Last"]:
+        if col in df.columns:
+            df[col] = df[col].fillna("").astype(str).str.strip()
+        else:
+            df[col] = ""
+
+    mask = (
+        df["Instructor"].eq(inst_name)
+        & df["Instructor First"].eq(inst_first)
+        & df["Instructor Middle"].eq(inst_middle)
+        & df["Instructor Last"].eq(inst_last)
+    )
+    df_inst = df[mask].copy()
+
+    if df_inst.empty:
+        print(f"    ⚠️ No rows found in CSV for instructor {inst_name}. Skipping GPA graph.")
+        return None
+
+    # sort by Strm
+    if "Strm" in df_inst.columns:
+        df_inst["_Strm_int"] = pd.to_numeric(df_inst["Strm"], errors="coerce")
+        df_inst = df_inst.sort_values("_Strm_int", ascending=False, kind="mergesort")
+        df_inst = df_inst.drop(columns=["_Strm_int"])
+    else:
+        print("    ⚠️ Column 'Strm' not found. Using original row order for instructor courses.")
+
+    # compute per-session gpa deltas vs baseline ##########################################
+    labels = []
+    diffs = []
+
+    for _, row in df_inst.iterrows():
+        # actual GPA for this section
+        try:
+            actual_gpa = float(row.get("GPA"))
+        except (TypeError, ValueError):
+            continue
+        if math.isnan(actual_gpa):
+            continue
+
+        # baseline GPA for this course row
+        baseline_info = data_handler.aggregate_for_row(
+            comparison=comparison,
+            row=row,
+            json_dir=json_dir,
+            csv_path=csv_path_use,
+        )
+        baseline_gpa = baseline_info.get("gpa")
+        if baseline_gpa is None:
+            continue
+        try:
+            baseline_gpa_f = float(baseline_gpa)
+        except (TypeError, ValueError):
+            continue
+        if math.isnan(baseline_gpa_f):
+            continue
+
+        diff = actual_gpa - baseline_gpa_f
+
+        # build course label: SUBJECTCATALOG Term YY (ClassNbr)
+        subject = str(row.get("Subject") or "").strip()
+        catalog = str(row.get("Catalog Nbr") or "").strip()
+        term = str(row.get("Term") or "").strip()
+        year = str(row.get("Year") or "").strip()
+        class_nbr = str(row.get("Class Nbr") or "").strip()
+
+        # shorten 4-digit year to last two digits
+        year_short = year[-2:] if len(year) == 4 and year.isdigit() else year
+
+        # remove space between subject and catalog
+        subject_catalog = f"{subject}{catalog}" if (subject or catalog) else ""
+
+        parts = [p for p in [subject_catalog, term, year_short] if p]
+        course_label = " ".join(parts) if parts else "(unknown)"
+        if class_nbr:
+            course_label = f"{course_label} ({class_nbr})"
+
+        aggregate_name = (
+            baseline_info.get("aggregate_name")
+            or baseline_info.get("baseline")
+            or "baseline"
+        )
+        aggregate_name = str(aggregate_name)
+        if aggregate_name.startswith("All Available "):
+            aggregate_name = aggregate_name[len("All Available "):]
+
+        label = f"{course_label} vs. {aggregate_name}"
+
+        labels.append(label)
+        diffs.append(diff)
+
+    if not labels:
+        print(f"    ⚠️ No GPA/baseline data for instructor {inst_name}. Skipping GPA graph.")
+        return None
+
+    diffs_arr = np.asarray(diffs, dtype=float)
+    y = np.arange(len(diffs_arr))
+    n_courses = len(labels)
+
+    max_abs = float(np.nanmax(np.abs(diffs_arr)))
+    if not math.isfinite(max_abs) or max_abs <= 0.0:
+        max_abs = 0.5
+    xlim = max_abs * (1.0 + x_margin)
+
+    # plotting ###################################################################
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=dpi)
+
+    # zero line in the middle (vertical)
+    ax.axvline(0.0, color=zero_line_color, linewidth=zero_linewidth)
+
+    colors = [positive_color if v >= 0.0 else negative_color for v in diffs_arr]
+    ax.barh(y, diffs_arr, color=colors, height=bar_height)
+
+    ax.set_yticks(y)
+    if n_courses >= 40:
+        tick_fs = 6
+    elif n_courses >= 30:
+        tick_fs = 7
+    elif n_courses >= 20:
+        tick_fs = 8
+    else:
+        tick_fs = 9
+    ax.set_yticklabels(labels, fontsize=tick_fs)
+
+    ax.set_xlim(-xlim, xlim)
+    ax.set_xlabel("GPA difference vs baseline")
+    ax.set_ylabel("Course vs aggregate")
+
+    display_name_parts = [inst_first, inst_middle, inst_last]
+    display_name = " ".join([p for p in display_name_parts if p]) or inst_name or "Unknown instructor"
+    ax.set_title(f"GPA vs aggregate by course for {display_name}")
+
+    fig.tight_layout()
+
+    # filename ###################################################################
+    instructor_last_slug = _slug(inst_last)
+    instructor_first_slug = _slug(inst_first)
+    if instructor_last_slug and instructor_first_slug:
+        filename = f"{instructor_last_slug}_{instructor_first_slug}.png"
+    elif inst_name:
+        filename = f"{_slug(inst_name)}.png"
+    else:
+        filename = "instructor.png"
+
+    out_path = os.path.join(instr_dir, filename)
+    fig.savefig(out_path)
+    plt.close(fig)
+
+    print(f"    ✅ Generated instructor course GPA graph: {out_path}")
+    return out_path
