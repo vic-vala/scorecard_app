@@ -64,7 +64,14 @@ def load_user_prompt(llm_dir, pdf_json):
     return user_prompt
 
 
-def run_llm(gguf_path, scorecards_to_generate, llm_dir, temp_dir):
+def run_llm(gguf_path, scorecards_to_generate, llm_dir):
+    """
+    Spins up the LLM & generates an LLM summary for each viable `scorecard_set`
+
+    Args:
+        gguf_path (`str`): path to *.gguf* model
+        scorecards_to_generate (`List` of (`tuple` of (`pd.DataFrame`, `./path/to/*.json`))): a `scorecard_set`
+    """
     if not os.path.exists(gguf_path):
         print(f"GGUF model not found at {gguf_path}. Skipping LLM analysis.", file=sys.stderr)
         return
@@ -128,11 +135,9 @@ def run_llm(gguf_path, scorecards_to_generate, llm_dir, temp_dir):
             print("LLM response completed!")
 
             # Write the complete, .json to the temporary directory
-            os.makedirs(os.path.dirname(temp_dir), exist_ok=True)
-            temp_path = f"{temp_dir}/temp.json"
-            with open(temp_path, "w", encoding="utf-8") as out_f:
+            with open(pdf_json_path, "w", encoding="utf-8") as out_f:
                 json.dump(pdf_json, out_f, indent=4)
-                print(f"LLM summary added to JSON and saved to temporary file: %s" % ("temp"))
+                print(f"LLM summary added to JSON and saved to temporary file: {pdf_json_path}")
             
         except Exception as e:
             print(f"Error occured during LLM chat completion")
