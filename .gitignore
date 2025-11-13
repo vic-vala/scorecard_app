@@ -16,6 +16,7 @@ uv.lock
 # Project specific
 temporary_files/
 input_files/
+resources/
 *.gguf
 ./*.tex
 
