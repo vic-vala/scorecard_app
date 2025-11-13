@@ -87,6 +87,7 @@ class Application:
                     scorecards_to_generate= self.scorecards_to_generate,
                     llm_dir= self.paths['llm_prompt_dir'])
             print("LLM Tasks Completed 🤖")
+
     def generate_data_visualizations(self):
         print("📈 Generating Data Visualizations")
         data_vis.generate_data_visualization(
@@ -99,13 +100,26 @@ class Application:
     def create_scorecards(self):
         # List of this tuple: (csv row, matching json pdf)
         print("📝 Generating LaTeX")
+
         # Iterate through the scorecards to generate one at a time
         for scorecard_set in self.scorecards_to_generate:
+            # Get the aggregate data metrics
+            print(f"\ngetting agg data for: {scorecard_set[0]}, {scorecard_set[1]}\n")
+            agg_data = data_handler.aggregate_for_row(
+                comparison=self.config['comparison'],
+                row=scorecard_set[0],
+                json_dir=self.paths['parsed_pdf_dir'],
+                csv_path=self.csv_path[0]
+            )
+            print(f"agg data: {agg_data}")
+
             scorecard_assembler.assemble_scorecard(
                 scorecard_set=scorecard_set, 
                 histogram_dir=self.paths['grade_histogram_dir'],
                 tex_output_path=self.paths['tex_dir'],
-                scorecard_output_path=self.paths['scorecard_dir'])
+                scorecard_output_path=self.paths['scorecard_dir'],
+                agg_data=agg_data
+                )
 
 if __name__ == "__main__":
     try:
