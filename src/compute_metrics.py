@@ -2,7 +2,8 @@
 Helper functions for calculating grade metrics, percentages, and deltas.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+from src.utils import GRADE_COLS
 
 
 def calculate_grade_count(csv_row: Dict[str, Any], *grade_keys: str) -> int:
@@ -11,11 +12,10 @@ def calculate_grade_count(csv_row: Dict[str, Any], *grade_keys: str) -> int:
     total # of A's, B's, and C's & displaying on the grade table
 
     Args:
-        csv_row: `dict` containing grade data
-        *grade_keys: Variable number of grade keys (e.g., 'A', 'A+', 'A-')
-
+        csv_row: `dict` containing csv row information
+        *grade_keys: grades to calculate metrics for
     Returns:
-        Total count across all specified grade keys
+        Total count across grades to calculate metrics for
     """
     total = 0
     for key in grade_keys:
@@ -24,7 +24,6 @@ def calculate_grade_count(csv_row: Dict[str, Any], *grade_keys: str) -> int:
         except (KeyError, ValueError, TypeError):
             continue
     return total
-
 
 def calculate_total_students(csv_row: Dict[str, Any]) -> int:
     """
@@ -38,8 +37,7 @@ def calculate_total_students(csv_row: Dict[str, Any]) -> int:
     Returns:
         Total student count
     """
-    grade_keys = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D', 'E', 'W']
-    return calculate_grade_count(csv_row, *grade_keys)
+    return calculate_grade_count(csv_row, *GRADE_COLS)
 
 
 def calculate_percentage(count: int, total: int) -> str:
@@ -102,7 +100,7 @@ def get_grade_metrics(
     Returns:
         `dict` with keys: 'count', 'pct', 'delta'
     """
-    # Define which grade keys to include for each category
+    # Define which grade keys to include for each category (grouped like this for the LaTeX table)
     grade_mapping = {
         'A': ['A+', 'A', 'A-'],
         'B': ['B+', 'B', 'B-'],
@@ -139,6 +137,112 @@ def get_grade_metrics(
     }
 
 
+def get_pass_metrics(
+    csv_row: Dict[str, Any],
+    agg_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Calculate metrics for passing grades (A+ through D).
+
+    Args:
+        csv_row: `dict` containing individual course row data
+        agg_data: `dict` containing aggregate baseline data
+
+    Returns:
+        `dict` with keys: 'count', 'pct', 'delta'
+    """
+    # Passing grades: all letter grades with GPA points (D=1.0 is passing)
+    pass_grades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D']
+    count = calculate_grade_count(csv_row, *pass_grades)
+
+    total_students = calculate_total_students(csv_row)
+    pct = calculate_percentage(count, total_students)
+
+    # Calculate aggregate pass percentage
+    grade_percentages = agg_data.get('grade_percentages', {})
+    agg_percentage = sum(grade_percentages.get(g, 0.0) for g in pass_grades)
+
+    course_percentage = count / total_students if total_students > 0 else 0.0
+    delta = calculate_grade_delta(course_percentage, agg_percentage)
+
+    return {
+        'count': count,
+        'pct': pct,
+        'delta': delta
+    }
+
+
+def get_fail_metrics(
+    csv_row: Dict[str, Any],
+    agg_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Calculate metrics for failing grades (E only).
+
+    Args:
+        csv_row: `dict` containing individual course row data
+        agg_data: `dict` containing aggregate baseline data
+
+    Returns:
+        `dict` with keys: 'count', 'pct', 'delta'
+    """
+    try:
+        count = int(csv_row['E'])
+    except (KeyError, ValueError, TypeError):
+        count = 0
+
+    total_students = calculate_total_students(csv_row)
+    pct = calculate_percentage(count, total_students)
+
+    # Calculate aggregate fail percentage
+    grade_percentages = agg_data.get('grade_percentages', {})
+    agg_percentage = grade_percentages.get('E', 0.0)
+
+    course_percentage = count / total_students if total_students > 0 else 0.0
+    delta = calculate_grade_delta(course_percentage, agg_percentage)
+
+    return {
+        'count': count,
+        'pct': pct,
+        'delta': delta
+    }
+
+
+def get_drop_metrics(
+    csv_row: Dict[str, Any],
+    agg_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Calculate metrics for drop/incomplete grades (EN, EU, I, NR, X, XE, Y, Z).
+
+    Args:
+        csv_row: `dict` containing individual course row data
+        agg_data: `dict` containing aggregate baseline data
+
+    Returns:
+        `dict` with keys: 'count', 'pct', 'delta'
+    """
+    # Drop/incomplete grades: administrative/incomplete statuses
+    drop_grades = ['EN', 'EU', 'I', 'NR', 'NR.1', 'X', 'XE', 'Y', 'Z']
+    count = calculate_grade_count(csv_row, *drop_grades)
+
+    total_students = calculate_total_students(csv_row)
+    pct = calculate_percentage(count, total_students)
+
+    # Calculate aggregate drop percentage
+    grade_percentages = agg_data.get('grade_percentages', {})
+    agg_percentage = sum(grade_percentages.get(g, 0.0) for g in drop_grades)
+
+    course_percentage = count / total_students if total_students > 0 else 0.0
+    delta = calculate_grade_delta(course_percentage, agg_percentage)
+
+    return {
+        'count': count,
+        'pct': pct,
+        'delta': delta
+    }
+
+
 def get_withdraw_metrics(
     csv_row: Dict[str, Any],
     agg_data: Dict[str, Any]
@@ -147,7 +251,7 @@ def get_withdraw_metrics(
     Calculate metrics specifically for withdrawals.
 
     Args:
-        csv_row: `dict` containing individual course grade data
+        csv_row: `dict` containing individual course row data
         agg_data: `dict` containing aggregate baseline data
 
     Returns:
@@ -241,7 +345,7 @@ def get_course_size_delta(csv_row: Dict[str, Any], agg_data: Dict[str, Any]) -> 
     Calculate course size delta between individual course and aggregate average.
 
     Args:
-        csv_row: `dict` with the individual course data
+        csv_row: `dict` with the course row data
         agg_data: `dict` containing aggregate baseline data
 
     Returns:
@@ -267,7 +371,7 @@ def get_response_rate_delta(pdf_json: Dict[str, Any], agg_data: Dict[str, Any]) 
     Calculate response rate delta between individual course and aggregate.
 
     Args:
-        pdf_json: `dict` containing PDF evaluation data
+        pdf_json: `dict` containing PDF eval data
         agg_data: `dict` containing aggregate baseline data
 
     Returns:
@@ -283,7 +387,7 @@ def get_avg_part1_delta(pdf_json: Dict[str, Any], agg_data: Dict[str, Any]) -> s
     Calculate part 1 avg delta between individual course and aggregate.
 
     Args:
-        pdf_json: `dict` with the PDF evaluation data
+        pdf_json: `dict` with the PDF eval data
         agg_data: `dict` with aggregate baseline data
 
     Returns:
@@ -318,18 +422,40 @@ def get_avg_part2_delta(pdf_json: Dict[str, Any], agg_data: Dict[str, Any]) -> s
     return calculate_numeric_delta(course_avg2, agg_avg2, decimal_places=2)
 
 
-def get_median_grade_delta(csv_row: Dict[str, Any], agg_data: Dict[str, Any]) -> str:
+def calculate_median_grade(csv_row: Dict[str, Any]) -> Optional[str]:
     """
-    Calculate median grade delta.
+    Calculate the median grade for a course row
 
-    For now returns placeholder, but could be enhanced to show grade level differences.
+    Uses the same percentile logic as data_handler.aggregate_for_row() to find
+    the grade at the 0.50 percentile. **I looked into reusing joey's code for this,
+    but I didn't want to decouple the nested func yet. Will work on that later.**
 
     Args:
-        csv_row: `dict` with individual course data
-        agg_data: `dict` with aggregate baseline data
+        csv_row: `dict` with individual course grade data
 
     Returns:
-        Median grade delta (currently placeholder for letter grade comparison)
+        Median grade as letter grade string or `None` if no grades are available
     """
-    # TODO: Calculate individual course median grade & compare it
-    return "N/A"
+    # Calculate total grades across all grade columns
+    total_grades = 0
+    for grade in GRADE_COLS:
+        try:
+            total_grades += int(csv_row.get(grade, 0))
+        except (ValueError, TypeError):
+            continue
+
+    if total_grades == 0:
+        return None
+
+    # Find grade at 0.50
+    threshold = 0.50 * total_grades
+    cumulative = 0
+    for grade in GRADE_COLS:  # ordered from A+ down to Z
+        try:
+            cumulative += int(csv_row.get(grade, 0))
+        except (ValueError, TypeError):
+            continue
+        if cumulative >= threshold:
+            return grade
+
+    return None
