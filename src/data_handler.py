@@ -2,9 +2,22 @@ import os
 import json
 import math
 import re
+import statistics
 from typing import Any, Dict, Mapping, Optional, List, Tuple
 import pandas as pd
 
+gpa_scale = {
+    "A+": 4.33, "A": 4.0, "A-": 3.67,
+    "B+": 3.33, "B": 3.0, "B-": 2.67,
+    "C+": 2.33, "C": 2.0, "D": 1.0, "E": 0.0,
+}
+
+GRADE_COLS = [
+    "A+", "A", "A-", "B+", "B", "B-",
+    "C+", "C", "D", "E",
+    "EN", "EU", "I", "NR", "NR.1",
+    "W", "X", "XE", "Y", "Z",
+]
 
 def _parse_filename(filename: str):
     """
@@ -113,6 +126,9 @@ def viable_scorecards(json_dir: str, csv_path: str) -> Tuple[pd.DataFrame, List[
     return result, matched_set
 
 def get_instructors(csv_path: str) -> pd.DataFrame:
+    """
+    returns a DataFrame of all unique instructors and how many course sessions they have
+    """
     df = pd.read_csv(csv_path, dtype=str)
 
     cols = ["Instructor", "Instructor First", "Instructor Middle", "Instructor Last"]
@@ -131,27 +147,28 @@ def get_instructors(csv_path: str) -> pd.DataFrame:
 
     return result
 
-gpa_scale = {
-    "A+": 4.33, "A": 4.0, "A-": 3.67,
-    "B+": 3.33, "B": 3.0, "B-": 2.67,
-    "C+": 2.33, "C": 2.0, "D": 1.0, "E": 0.0,
-}
-
-GRADE_COLS = [
-    "A+", "A", "A-", "B+", "B", "B-",
-    "C+", "C", "D", "E",
-    "EN", "EU", "I", "NR", "NR.1",
-    "W", "X", "XE", "Y", "Z",
-]
-
 def _is_true(val: Any) -> bool:
+    """
+    True if str(val).lower() == "true"
+
+    Use this for .json config stuff
+    """
     return str(val).lower() == "true"
 
 def _is_hundred(val: Any) -> bool:
+    """
+    True if str(val).lower() == "hundred"
+    
+    This is for reading match_catalog_number in the config.json, since it can be "true", "false", or "hundred"
+    """
     return str(val).lower() == "hundred"
 
 def _parse_catalog_int(value: Any) -> Optional[int]:
-    """extract leading integer from a catalog string, like '470' or '4DE'."""
+    """
+    extract leading integer from a catalog string, like '470' or '4DE'
+
+    this is useful for when match_catalog_number = "hundred"
+    """
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return None
     s = str(value).strip()
@@ -164,7 +181,11 @@ def _parse_catalog_int(value: Any) -> Optional[int]:
         return None
 
 def _same_hundred_level(cat1: Any, cat2: Any) -> bool:
-    """return True if two catalog numbers are in the same x00 x99 band"""
+    """
+    return True if two catalog numbers are in the same x00 x99 band
+    
+    this is used when match_catalog_number == "hundred"
+    """
     n1 = _parse_catalog_int(cat1)
     n2 = _parse_catalog_int(cat2)
     if n1 is None or n2 is None:
@@ -173,6 +194,12 @@ def _same_hundred_level(cat1: Any, cat2: Any) -> bool:
 
 def compute_course_gpa(row_like: Mapping[str, Any], scale: Dict[str, float]) -> Optional[float]:
     """
+    THIS FUNCTION IS DEPRECIATED!!! 
+    csv_cleaner computes GPAs and adds it as a column "GPA"
+    
+    Don't use this, it will be removed eventually
+
+    (old documentation)
     compute GPA for a single course row from CSV data
     uses gpa_scale and only A+ through E, ignores EN EU W I etc.
     """
@@ -191,7 +218,6 @@ def compute_course_gpa(row_like: Mapping[str, Any], scale: Dict[str, float]) -> 
     if total_count == 0:
         return None
     return total_points / total_count
-
 
 def describe_aggregate(
     comparison: Dict[str, Any],
@@ -263,7 +289,6 @@ def describe_aggregate(
         return f"All Available {main} Courses"
     else:
         return "All Available Courses"
-
 
 def aggregate_for_row(
     comparison: Dict[str, Any],
@@ -342,15 +367,16 @@ def aggregate_for_row(
     matched_df = df[mask].copy()
     num_courses_csv = len(matched_df)
 
-    # GPA across matched CSV rows
-    gpas = []
-    for _, r in matched_df.iterrows():
-        g = compute_course_gpa(r, gpa_scale)
-        if g is not None:
-            gpas.append(g)
-    gpa_value: Optional[float] = (
-        sum(gpas) / len(gpas) if gpas else None
-    )
+    gpas = pd.to_numeric(matched_df["GPA"], errors="coerce").dropna().tolist()
+
+    if gpas:
+        gpa_value: Optional[float] = sum(gpas) / len(gpas)
+        gpa_std: Optional[float] = (
+            statistics.pstdev(gpas) if len(gpas) > 1 else 0.0
+        )
+    else:
+        gpa_value = None
+        gpa_std = None
 
     # Grade distribution and quartiles from CSV
     grade_percentages = {g: 0.0 for g in GRADE_COLS}
@@ -469,6 +495,7 @@ def aggregate_for_row(
     return {
         "aggregate_name": aggregate_name,
         "gpa": gpa_value,
+        "gpa_std": gpa_std,
         "median_grade": median_grade,
         "q1_grade": q1_grade,
         "q3_grade": q3_grade,
