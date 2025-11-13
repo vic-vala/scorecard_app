@@ -200,3 +200,32 @@ def _is_hundred(val: Any) -> bool:
     This is for reading match_catalog_number in the config.json, since it can be "true", "false", or "hundred"
     """
     return str(val).lower() == "hundred"
+
+def _same_hundred_level(cat1: Any, cat2: Any) -> bool:
+    """
+    return True if two catalog numbers are in the same x00 x99 band
+    
+    this is used when match_catalog_number == "hundred"
+    """
+    n1 = _parse_catalog_int(cat1)
+    n2 = _parse_catalog_int(cat2)
+    if n1 is None or n2 is None:
+        return False
+    return (n1 // 100) == (n2 // 100)
+
+def _parse_catalog_int(value: Any) -> Optional[int]:
+    """
+    extract leading integer from a catalog string, like '470' or '4DE'
+
+    this is useful for when match_catalog_number = "hundred"
+    """
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return None
+    s = str(value).strip()
+    m = re.match(r"\d+", s)
+    if not m:
+        return None
+    try:
+        return int(m.group(0))
+    except ValueError:
+        return None
