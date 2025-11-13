@@ -70,7 +70,7 @@ def run_llm(gguf_path, scorecards_to_generate, llm_dir):
 
     Args:
         gguf_path (`str`): path to *.gguf* model
-        scorecards_to_generate (`List` of (`tuple` of (`pd.DataFrame`, `./path/to/*.json`))): a `scorecard_set`
+        scorecards_to_generate (`List` of (`tuple` of (`dict`, `./path/to/*.json`))): a `scorecard_set`
     """
     if not os.path.exists(gguf_path):
         print(f"GGUF model not found at {gguf_path}. Skipping LLM analysis.", file=sys.stderr)
