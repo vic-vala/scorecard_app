@@ -5,51 +5,7 @@ import re
 import statistics
 from typing import Any, Dict, Mapping, Optional, List, Tuple
 import pandas as pd
-
-gpa_scale = {
-    "A+": 4.33, "A": 4.0, "A-": 3.67,
-    "B+": 3.33, "B": 3.0, "B-": 2.67,
-    "C+": 2.33, "C": 2.0, "D": 1.0, "E": 0.0,
-}
-
-GRADE_COLS = [
-    "A+", "A", "A-", "B+", "B", "B-",
-    "C+", "C", "D", "E",
-    "EN", "EU", "I", "NR", "NR.1",
-    "W", "X", "XE", "Y", "Z",
-]
-
-def _parse_filename(filename: str):
-    """
-    Parse filenames of the form:
-        Subject_CatalogNbr_InstructorLast_Term_Year_ClassNbr.json
-
-    Returns a dict with keys:
-        subject, catalog_nbr, instructor_last, term,
-        year, class_nbr
-    """
-    base = os.path.basename(filename)
-    if base.lower().endswith(".json"):
-        base = base[:-5]
-
-    parts = base.split("_")
-
-    if len(parts) != 6:
-        raise ValueError(
-            f"Unexpected JSON filename format: {filename}. "
-            "Expected 6 underscore-separated parts."
-        )
-
-    subject, catalog_nbr, instructor_last, term, year, class_nbr = parts
-
-    return {
-        "subject": subject,
-        "catalog_nbr": catalog_nbr,
-        "instructor_last": instructor_last,
-        "term": term,
-        "year": year,
-        "class_nbr": class_nbr,
-    }
+from src.utils import _is_true, _is_hundred, gpa_scale, GRADE_COLS, _parse_filename
 
 def viable_scorecards(json_dir: str, csv_path: str) -> Tuple[pd.DataFrame, List[Tuple]]:
     """
@@ -146,22 +102,6 @@ def get_instructors(csv_path: str) -> pd.DataFrame:
     )
 
     return result
-
-def _is_true(val: Any) -> bool:
-    """
-    True if str(val).lower() == "true"
-
-    Use this for .json config stuff
-    """
-    return str(val).lower() == "true"
-
-def _is_hundred(val: Any) -> bool:
-    """
-    True if str(val).lower() == "hundred"
-    
-    This is for reading match_catalog_number in the config.json, since it can be "true", "false", or "hundred"
-    """
-    return str(val).lower() == "hundred"
 
 def _parse_catalog_int(value: Any) -> Optional[int]:
     """

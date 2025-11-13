@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from src import data_handler
+from src.utils import _slug, _get_numeric
 
 _GRADE_ORDER = ["E", "D", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"]
 
@@ -57,35 +58,6 @@ def generate_data_visualization(
         generate_instructor_course_gpa_graph,
         csv_path,
     )
-
-def _slug(value: Any, fallback: str = "NA") -> str:
-    """
-    Convery an arbitrary value to a filename safe string
-    - Replaces space with underscores
-    - Convert to a string
-    - Strip leading/trailing whitespace
-    - Remove all non letter/digit/underscores
-    """
-    if value is None:
-        return fallback
-    s = str(value).strip()
-    if not s:
-        return fallback
-    s = s.replace(" ", "_")
-    s = re.sub(r"[^A-Za-z0-9_]+", "", s)
-    return s or fallback
-
-def _get_numeric(course: Mapping[str, Any], key: str) -> float:
-    """
-    Go from a course (row in the CSV) and a key to a float safely
-    """
-    raw = course.get(key)
-    if raw is None or raw == "":
-        return 0.0
-    try:
-        return float(raw)
-    except (TypeError, ValueError):
-        return 0.0
 
 def generate_course_grade_histogram(
     config: Mapping[str, Any],
