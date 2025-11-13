@@ -5,53 +5,9 @@ import re
 import statistics
 from typing import Any, Dict, Mapping, Optional, List, Tuple
 import pandas as pd
+from src.utils import _is_true, _is_hundred, gpa_scale, GRADE_COLS, _parse_filename, _same_hundred_level, _parse_catalog_int
 
-gpa_scale = {
-    "A+": 4.33, "A": 4.0, "A-": 3.67,
-    "B+": 3.33, "B": 3.0, "B-": 2.67,
-    "C+": 2.33, "C": 2.0, "D": 1.0, "E": 0.0,
-}
-
-GRADE_COLS = [
-    "A+", "A", "A-", "B+", "B", "B-",
-    "C+", "C", "D", "E",
-    "EN", "EU", "I", "NR", "NR.1",
-    "W", "X", "XE", "Y", "Z",
-]
-
-def _parse_filename(filename: str):
-    """
-    Parse filenames of the form:
-        Subject_CatalogNbr_InstructorLast_Term_Year_ClassNbr.json
-
-    Returns a dict with keys:
-        subject, catalog_nbr, instructor_last, term,
-        year, class_nbr
-    """
-    base = os.path.basename(filename)
-    if base.lower().endswith(".json"):
-        base = base[:-5]
-
-    parts = base.split("_")
-
-    if len(parts) != 6:
-        raise ValueError(
-            f"Unexpected JSON filename format: {filename}. "
-            "Expected 6 underscore-separated parts."
-        )
-
-    subject, catalog_nbr, instructor_last, term, year, class_nbr = parts
-
-    return {
-        "subject": subject,
-        "catalog_nbr": catalog_nbr,
-        "instructor_last": instructor_last,
-        "term": term,
-        "year": year,
-        "class_nbr": class_nbr,
-    }
-
-def viable_scorecards(json_dir: str, csv_path: str) -> Tuple[pd.DataFrame, List[Tuple]]:
+def viable_scorecards(json_dir: str, csv_path: str) -> pd.DataFrame:
     """
     This function looks through the name of each of the json files one at a time.
 
@@ -70,7 +26,6 @@ def viable_scorecards(json_dir: str, csv_path: str) -> Tuple[pd.DataFrame, List[
             df[col] = df[col].astype(str).str.strip()
 
     matched_rows = []
-    matched_set = []
 
     # scan directory
     for fname in os.listdir(json_dir):
@@ -110,20 +65,13 @@ def viable_scorecards(json_dir: str, csv_path: str) -> Tuple[pd.DataFrame, List[
         else:
             print(f"  ✅ Matching JSON and CSV found for '{fname}'")
             matched_rows.append(rows)
-
-            # A tuple for grouping viable scorecards together (dict, pdf json path)
-            matched_pair = (rows.iloc[0].to_dict(), full_path)
-            # Add it to the set for easy iteration
-            matched_set.append(matched_pair)
-            
     
     if matched_rows:
         result = pd.concat(matched_rows, ignore_index=True)
     else:
         result = df.iloc[0:0].copy()
-    
-    # Return the matched rows [0], and the matched set (list of tuples): (matched_row, matched_json)
-    return result, matched_set
+
+    return result
 
 def get_instructors(csv_path: str) -> pd.DataFrame:
     """
@@ -146,51 +94,6 @@ def get_instructors(csv_path: str) -> pd.DataFrame:
     )
 
     return result
-
-def _is_true(val: Any) -> bool:
-    """
-    True if str(val).lower() == "true"
-
-    Use this for .json config stuff
-    """
-    return str(val).lower() == "true"
-
-def _is_hundred(val: Any) -> bool:
-    """
-    True if str(val).lower() == "hundred"
-    
-    This is for reading match_catalog_number in the config.json, since it can be "true", "false", or "hundred"
-    """
-    return str(val).lower() == "hundred"
-
-def _parse_catalog_int(value: Any) -> Optional[int]:
-    """
-    extract leading integer from a catalog string, like '470' or '4DE'
-
-    this is useful for when match_catalog_number = "hundred"
-    """
-    if value is None or (isinstance(value, float) and math.isnan(value)):
-        return None
-    s = str(value).strip()
-    m = re.match(r"\d+", s)
-    if not m:
-        return None
-    try:
-        return int(m.group(0))
-    except ValueError:
-        return None
-
-def _same_hundred_level(cat1: Any, cat2: Any) -> bool:
-    """
-    return True if two catalog numbers are in the same x00 x99 band
-    
-    this is used when match_catalog_number == "hundred"
-    """
-    n1 = _parse_catalog_int(cat1)
-    n2 = _parse_catalog_int(cat2)
-    if n1 is None or n2 is None:
-        return False
-    return (n1 // 100) == (n2 // 100)
 
 def compute_course_gpa(row_like: Mapping[str, Any], scale: Dict[str, float]) -> Optional[float]:
     """

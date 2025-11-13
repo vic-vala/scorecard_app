@@ -4,7 +4,7 @@ import re
 import sys
 import pandas as pd
 from typing import Any, Dict, Mapping, Optional, List, Tuple
-
+from src.utils import course_to_json_path, course_to_stem
 
 from pylatex import(
     Command,
@@ -371,15 +371,6 @@ class _ScorecardDoc:
             self.grade_hist
         )
         self.doc.append(NoEscape(template))
-
-def get_fname_from_json_path(json_path):
-    fname_match = re.match((r".*/(.*)(?=\.json)"), json_path)
-
-    if fname_match:
-        return fname_match.group(1)
-    else:
-        print(f"Couldn't capture file name from json path for grade histogram sourcing.")
-        return None
     
 def load_pdf_json(pdf_json_path):
     # Attempt to load the file
@@ -395,12 +386,10 @@ def load_pdf_json(pdf_json_path):
         return None
 
 def assemble_scorecard(
-        scorecard_set: Tuple[Dict[str, Any], str],
-        histogram_dir: str,
-        tex_output_path: str,
-        scorecard_output_path: str,
-        agg_data: Dict[str, Any]
-        ):
+        course: Mapping[str, Any],
+        config,
+        csv_path,
+    ):
     """
     Generates the .tex for the scorecard & saves it as a pdf.
 
@@ -411,16 +400,29 @@ def assemble_scorecard(
     Todo:
         Implement the aggregate data metrics
     """
+    paths = config['paths']
+    
+    agg_data = aggregate_for_row(
+        comparison=config['comparison'],
+        row=course,
+        json_dir=paths['parsed_pdf_dir'],
+        csv_path=csv_path
+    )
+
+    histogram_dir=paths['grade_histogram_dir']
+    tex_output_path=paths['tex_dir']
+    scorecard_output_path=paths['scorecard_dir']
+
     # Source the grade histogram from the json path (similar naming structure)
-    histrogram_name = get_fname_from_json_path(scorecard_set[1])
+    histrogram_name = course_to_stem(course)
     histogram_full_path = os.path.join(histogram_dir, f"{histrogram_name}.png")
 
     # Load the pdf json representation
-    pdf_json = load_pdf_json(scorecard_set[1])
+    pdf_json = load_pdf_json(course_to_json_path(course))
     
     # Generate the latex doc
     latex_doc = _ScorecardDoc(
-        csv_row=scorecard_set[0],
+        csv_row=course,
         pdf_json=pdf_json,
         grade_hist=histogram_full_path,
         output_filename=histrogram_name,
@@ -432,7 +434,7 @@ def assemble_scorecard(
     # Save the latex doc to the temp folder in its subdirectory
     full_output_path = os.path.join(tex_output_path, latex_doc.output_filename)
     latex_doc.doc.generate_tex(full_output_path)
-    print(f"📝✅ Saved LaTeX to {full_output_path}")
+    print(f"  ✅ Saved LaTeX to {full_output_path}")
 
     # Save the latex as a pdf now
     #pdf_filename = latex_doc.output_filename

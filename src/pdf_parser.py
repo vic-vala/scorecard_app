@@ -14,7 +14,11 @@ class filename_info:
         self.course_number = course_number
 
 def extract_filename(filename):
-    filename_format = re.search(r"^(\w{3})\s+(\d{3})\s+(\w+)\s+Instructor\s+Evaluation\s+(\d{4})\s+([A-Za-z]{4,7})(?:[_-](\d{3,}))?\.pdf$",filename)
+    # allow an optional "-CSE" immediately after the course number, but ignore it for parsing (ASU 101-CSE is an example)
+    filename_format = re.search(
+        r"^(\w{3})\s+(\d{3})(?:-CSE)?\s+(\w+)\s+Instructor\s+Evaluation\s+(\d{4})\s+([A-Za-z]{4,7})(?:[_-](\d{3,}))?\.pdf$",
+        filename
+    )
     if filename_format:
         department = filename_format.group(1).upper()
         course = filename_format.group(2).strip()
@@ -23,7 +27,6 @@ def extract_filename(filename):
         term = filename_format.group(5).capitalize()
         course_number = filename_format.group(6).strip()
         return department, course, professor, year, term, course_number
-
     
 def parse_graph_avgs(pdf_text, pdf_json, key_map):
     # Regex pattern for matching Q1-18
@@ -137,6 +140,9 @@ def run_pdf_parser(pdf_source, parsed_base_dir, overwrite_json=False):
             print(f"Directory created. Please add your PDF files to '{pdf_source}' folder.")
         else:
             for file in os.listdir(pdf_source):
+                if file == ".gitkeep":
+                    continue
+
                 if file.endswith(".pdf"):
                     extracted = extract_filename(file)
                     if not extracted:

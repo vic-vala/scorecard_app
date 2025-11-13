@@ -1,5 +1,6 @@
 import json
 import os
+import pandas as pd
 from src import (
     pdf_parser,
     utils,
@@ -27,14 +28,12 @@ class Application:
         self.overwrite_json = str(config.get("overwrite_settings", {}).get("overwrite_json", "false")).lower() == "true"
 
         # Set later
-        self.overwrite_csv = None
+        self.overwrite_csv: bool
         self.csv_path = None
-        self.viable_scorecards_tuple = None
-        self.viable_scorecards = None
-        self.scorecards_to_generate = None
-        self.selected_scorecard_courses = None
-        self.selected_history_courses = None
-        self.selected_scorecard_instructors = None
+        self.viable_scorecards: pd.DataFrame
+        self.selected_scorecard_courses: pd.DataFrame
+        self.selected_history_courses: pd.DataFrame
+        self.selected_scorecard_instructors: pd.DataFrame
         print("✅ Config file loaded")
 
     def parse_excel(self):
@@ -52,9 +51,7 @@ class Application:
 
     def find_viable_scorecards(self):
         print("🔗 Finding viable courses for scorecard creation")
-        self.viable_scorecards_tuple = data_handler.viable_scorecards(self.paths['parsed_pdf_dir'], self.csv_path[0])
-        self.viable_scorecards = self.viable_scorecards_tuple[0]
-        self.scorecards_to_generate = self.viable_scorecards_tuple[1]
+        self.viable_scorecards = data_handler.viable_scorecards(self.paths['parsed_pdf_dir'], self.csv_path[0])
 
     def scorecard_selection(self):
         print("🖥️ Opening Scorecard Selection GUI")
@@ -84,7 +81,7 @@ class Application:
             print("🤖 Running LLM I/O")   
             llm_io.run_llm(
                 gguf_path=self.paths['gguf_path'],
-                scorecards_to_generate=self.scorecards_to_generate,
+                selected_scorecard_courses=self.selected_scorecard_courses,
                 llm_dir=self.paths['llm_prompt_dir'],
                 config=self.config,
             )
@@ -100,28 +97,18 @@ class Application:
             self.selected_history_courses)
         
     def create_scorecards(self):
-        # List of this tuple: (csv row, matching json pdf)
         print("📝 Generating LaTeX")
 
         # Iterate through the scorecards to generate one at a time
-        for scorecard_set in self.scorecards_to_generate:
-            # Get the aggregate data metrics
-            print(f"\ngetting agg data for: {scorecard_set[0]}, {scorecard_set[1]}\n")
-            agg_data = data_handler.aggregate_for_row(
-                comparison=self.config['comparison'],
-                row=scorecard_set[0],
-                json_dir=self.paths['parsed_pdf_dir'],
-                csv_path=self.csv_path[0]
-            )
-            print(f"agg data: {agg_data}")
-
+        for _, course in self.selected_scorecard_courses.iterrows():
             scorecard_assembler.assemble_scorecard(
-                scorecard_set=scorecard_set, 
-                histogram_dir=self.paths['grade_histogram_dir'],
-                tex_output_path=self.paths['tex_dir'],
-                scorecard_output_path=self.paths['scorecard_dir'],
-                agg_data=agg_data
-                )
+                course=course, 
+                config=self.config,
+                csv_path=self.csv_path[0],
+            )
+        
+        for _, instructor in self.selected_scorecard_instructors.iterrows():
+            pass
 
 if __name__ == "__main__":
     try:
