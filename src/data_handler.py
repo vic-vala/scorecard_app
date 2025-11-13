@@ -7,7 +7,7 @@ from typing import Any, Dict, Mapping, Optional, List, Tuple
 import pandas as pd
 from src.utils import _is_true, _is_hundred, gpa_scale, GRADE_COLS, _parse_filename, _same_hundred_level, _parse_catalog_int
 
-def viable_scorecards(json_dir: str, csv_path: str) -> Tuple[pd.DataFrame, List[Tuple]]:
+def viable_scorecards(json_dir: str, csv_path: str) -> pd.DataFrame:
     """
     This function looks through the name of each of the json files one at a time.
 
@@ -26,7 +26,6 @@ def viable_scorecards(json_dir: str, csv_path: str) -> Tuple[pd.DataFrame, List[
             df[col] = df[col].astype(str).str.strip()
 
     matched_rows = []
-    matched_set = []
 
     # scan directory
     for fname in os.listdir(json_dir):
@@ -66,20 +65,13 @@ def viable_scorecards(json_dir: str, csv_path: str) -> Tuple[pd.DataFrame, List[
         else:
             print(f"  ✅ Matching JSON and CSV found for '{fname}'")
             matched_rows.append(rows)
-
-            # A tuple for grouping viable scorecards together (dict, pdf json path)
-            matched_pair = (rows.iloc[0].to_dict(), full_path)
-            # Add it to the set for easy iteration
-            matched_set.append(matched_pair)
-            
     
     if matched_rows:
         result = pd.concat(matched_rows, ignore_index=True)
     else:
         result = df.iloc[0:0].copy()
-    
-    # Return the matched rows [0], and the matched set (list of tuples): (matched_row, matched_json)
-    return result, matched_set
+
+    return result
 
 def get_instructors(csv_path: str) -> pd.DataFrame:
     """

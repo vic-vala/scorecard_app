@@ -1,8 +1,9 @@
 import os
 import sys
 import json
+import pandas as pd
 from llama_cpp import Llama
-from src.utils import load_pdf_json
+from src.utils import load_pdf_json, course_to_json_path
 
 # Hardware/Computing Parameters
 N_CTX        = int(os.environ.get("N_CTX", 32768)) # Change this for laptops?
@@ -64,7 +65,12 @@ def load_user_prompt(llm_dir, pdf_json):
     return user_prompt
 
 
-def run_llm(gguf_path, scorecards_to_generate, llm_dir, config=None):
+def run_llm(
+        gguf_path, 
+        selected_scorecard_courses: pd.DataFrame, 
+        llm_dir, 
+        config=None
+):
     """
     Spins up the LLM & generates an LLM summary for each viable `scorecard_set`
 
@@ -90,9 +96,8 @@ def run_llm(gguf_path, scorecards_to_generate, llm_dir, config=None):
             "**Negative Feedback:** Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n"
             "**Overall Tone:** Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo."
         )
-
-        for scorecard_set in scorecards_to_generate:
-            pdf_json_path = scorecard_set[1]
+        for _, course in selected_scorecard_courses.iterrows():
+            pdf_json_path = course_to_json_path(course=course,config=config)
             pdf_json = load_pdf_json(pdf_json_path)
 
             pdf_json["llm_summary"] = placeholder_text
@@ -132,8 +137,8 @@ def run_llm(gguf_path, scorecards_to_generate, llm_dir, config=None):
         print(f"Error running instantiation the model: {e}")
         return
     
-    for scorecard_set in scorecards_to_generate:
-        pdf_json_path = scorecard_set[1]
+    for _, course in selected_scorecard_courses.iterrows():
+        pdf_json_path = course_to_json_path(course)
         pdf_json = load_pdf_json(pdf_json_path)
         # Retrieve user prompt (contains likes, dislikes, comments etc.)
         user_prompt = load_user_prompt(llm_dir, pdf_json)
