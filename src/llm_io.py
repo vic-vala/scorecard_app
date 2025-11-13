@@ -64,14 +64,47 @@ def load_user_prompt(llm_dir, pdf_json):
     return user_prompt
 
 
-def run_llm(gguf_path, scorecards_to_generate, llm_dir):
+def run_llm(gguf_path, scorecards_to_generate, llm_dir, config=None):
     """
     Spins up the LLM & generates an LLM summary for each viable `scorecard_set`
 
     Args:
         gguf_path (`str`): path to *.gguf* model
         scorecards_to_generate (`List` of (`tuple` of (`dict`, `./path/to/*.json`))): a `scorecard_set`
+        llm_dir (`str`): directory containing system/user prompts
+        config (`dict`, optional): full application config
     """
+
+    # determine whether to use debug placeholder
+    debug_replace_llm_with_placeholder = False
+    if config is not None:
+        debug_replace_llm_with_placeholder = str(
+            config.get("scorecard_gen_settings", {}).get("debug_replace_LLM_with_placeholder", "false")
+        ).lower() == "true"
+
+    if debug_replace_llm_with_placeholder:
+        print("  ⚠️ Placeholders enabled for LLM generation! debug_replace_LLM_with_placeholder is enabled in config!")
+
+        placeholder_text = (
+            "**Positive Feedback:** Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n"
+            "**Negative Feedback:** Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n"
+            "**Overall Tone:** Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo."
+        )
+
+        for scorecard_set in scorecards_to_generate:
+            pdf_json_path = scorecard_set[1]
+            pdf_json = load_pdf_json(pdf_json_path)
+
+            pdf_json["llm_summary"] = placeholder_text
+
+            with open(pdf_json_path, "w", encoding="utf-8") as out_f:
+                json.dump(pdf_json, out_f, indent=4)
+
+            print(f"  🟧 Placeholder LLM summary generated for: {pdf_json_path}")
+
+        return
+
+    # normal behavior below
     if not os.path.exists(gguf_path):
         print(f"GGUF model not found at {gguf_path}. Skipping LLM analysis.", file=sys.stderr)
         return
@@ -96,8 +129,9 @@ def run_llm(gguf_path, scorecards_to_generate, llm_dir):
             min_p = MIN_P,
         )
     except Exception as e:
-            print(f"Error running instantiation the model:{e}")
-            return
+        print(f"Error running instantiation the model: {e}")
+        return
+    
     for scorecard_set in scorecards_to_generate:
         pdf_json_path = scorecard_set[1]
         pdf_json = load_pdf_json(pdf_json_path)
@@ -122,13 +156,17 @@ def run_llm(gguf_path, scorecards_to_generate, llm_dir):
                 min_p=MIN_P,
                 stream=True,
             )
-            print("Generating LLM response...")
+            print(f"  ⏳ Generating LLM response for {pdf_json_path}")
             full_response_text = []
+            # print LLM output as it is generated
             for chunk in stream:
                 # Get content from the 'delta' key in each chunk
                 text = chunk["choices"][0]["delta"].get("content", "")
                 if text:
                     full_response_text.append(text)
+                    print(text, end="", flush=True)
+
+            print() # print a line after streaming
 
             llm_response = "".join(full_response_text)
             pdf_json['llm_summary'] = llm_response
@@ -140,4 +178,4 @@ def run_llm(gguf_path, scorecards_to_generate, llm_dir):
                 print(f"LLM summary added to JSON and saved to temporary file: {pdf_json_path}")
             
         except Exception as e:
-            print(f"Error occured during LLM chat completion")
+            print(f"Error occurred during LLM chat completion: {e}")

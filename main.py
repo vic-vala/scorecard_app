@@ -83,10 +83,12 @@ class Application:
         if (self.include_llm_insights):
             print("🤖 Running LLM I/O")   
             llm_io.run_llm(
-                    gguf_path=self.paths['gguf_path'],
-                    scorecards_to_generate= self.scorecards_to_generate,
-                    llm_dir= self.paths['llm_prompt_dir'])
-            print("LLM Tasks Completed 🤖")
+                gguf_path=self.paths['gguf_path'],
+                scorecards_to_generate=self.scorecards_to_generate,
+                llm_dir=self.paths['llm_prompt_dir'],
+                config=self.config,
+            )
+            print("  ✅ LLM Tasks Completed")
 
     def generate_data_visualizations(self):
         print("📈 Generating Data Visualizations")

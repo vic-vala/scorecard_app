@@ -15,7 +15,8 @@
         "llm_prompt_dir": "./configuration/LLM"
     },
     "scorecard_gen_settings": {
-        "include_LLM_insights": "false"
+        "include_LLM_insights": "true",
+        "debug_replace_LLM_with_placeholder": "true"
     },
     "overwrite_settings": {
         "overwrite_csv": "true",
