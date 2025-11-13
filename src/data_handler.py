@@ -111,8 +111,8 @@ def viable_scorecards(json_dir: str, csv_path: str) -> Tuple[pd.DataFrame, List[
             print(f"  ✅ Matching JSON and CSV found for '{fname}'")
             matched_rows.append(rows)
 
-            # A tuple for grouping viable scorecards together (dataframe, pdf json path)
-            matched_pair = (rows, full_path)
+            # A tuple for grouping viable scorecards together (dict, pdf json path)
+            matched_pair = (rows.iloc[0].to_dict(), full_path)
             # Add it to the set for easy iteration
             matched_set.append(matched_pair)
             
