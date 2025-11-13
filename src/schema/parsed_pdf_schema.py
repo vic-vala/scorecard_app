@@ -71,7 +71,9 @@ def initialize_pdf_json():
                 "10_to_29": [None, None],
             },
         },
-        "free_response": {"liked": [], "disliked": [], "comments": []}}
+        "free_response": {"liked": [], "disliked": [], "comments": []},
+        "llm_summary" : None
+        }
 def get_key_map():
     key_map = {}
     part_1_keys = [
