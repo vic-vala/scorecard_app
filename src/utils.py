@@ -3,9 +3,16 @@ import os
 import sys
 import re
 import math
+import shutil
 from typing import Any, Dict, Mapping, Optional, List, Tuple
+from src.resource_utils import get_resource_path, get_user_config_path
 
-CONFIG_PATH = "./configuration/config.json"
+# Get the appropriate config path
+_user_config_path = get_user_config_path()
+if _user_config_path:
+    CONFIG_PATH = str(_user_config_path)
+else:
+    CONFIG_PATH = get_resource_path("configuration/config.json")
 
 gpa_scale = {
     "A+": 4.33, "A": 4.0, "A-": 3.67,
@@ -20,24 +27,45 @@ GRADE_COLS = [
     "W", "X", "XE", "Y", "Z",
 ]
 
-def load_config(path=CONFIG_PATH):
+def load_config(path=None):
     """
-    Loads the config file used to drive the application
+    Loads the config file used to drive the application.
+
+    In frozen mode, uses a writable config file in the project root.
+    If it doesn't exist, copies from bundled default first.
 
     Args:
-        path (`str`): The path to the config file
+        path (`str`, optional): The path to the config file. If None, uses CONFIG_PATH.
 
     Returns: Deserialized json as Python object (`Dict`)
     """
+    if path is None:
+        path = CONFIG_PATH
+
+    # In frozen mode, ensure user config exists by copying from bundled default
+    if getattr(sys, 'frozen', False):
+        user_config = get_user_config_path()
+        if user_config and not user_config.exists():
+            # Copy bundled config to writable location
+            bundled_config = get_resource_path("configuration/config.json")
+            user_config.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(bundled_config, user_config)
+            print(f"📋 Created user config at: {user_config}")
+
     if not os.path.exists(path):
         raise FileNotFoundError(f"Config file not found at: {path}")
+
     with open(path, 'r', encoding="utf-8") as f:
-       return  json.load(f)
+       return json.load(f)
 
 def verify_directories(paths):
     print("Initializing file structure")
     # Check input directories
-    input_dirs = [paths['pdf_source'], os.path.dirname(paths['excel_source']), paths['llm_prompt_dir']]
+    input_dirs = [
+        paths['pdf_source'], 
+        os.path.dirname(paths['excel_source']), 
+        paths['llm_prompt_dir']
+        ]
     for input_dir in input_dirs:
         if not os.path.exists(input_dir):
             print(f"MISSING INPUT DIRECTORY: {input_dir}")
@@ -48,7 +76,8 @@ def verify_directories(paths):
     output_dirs = [
         paths['parsed_pdf_dir'],
         paths['temp_dir'],
-        paths['scorecard_dir']
+        paths['scorecard_dir'],
+        paths['tex_dir'],
     ]
     
     for output_dir in output_dirs:

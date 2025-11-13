@@ -468,10 +468,10 @@ def assemble_scorecard(
     print(f"  ✅ Saved LaTeX to {full_output_path}")
 
     # Save the latex as a pdf now
-    #pdf_filename = latex_doc.output_filename
-    #full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
-    #latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
-   # print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
+    pdf_filename = latex_doc.output_filename
+    full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
+    latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
+    print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
 
 
 
