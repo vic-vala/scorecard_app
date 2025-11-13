@@ -15,7 +15,7 @@ from pylatex import(
 )
 from src import latex_sections
 from src.data_handler import aggregate_for_row
-from src import grade_metrics
+from src import compute_metrics
 
 # Organizing all the data necessary for automating the latex, much cleaner containing
 #   everything in one class.
@@ -130,7 +130,7 @@ class _ScorecardDoc:
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseSize'), str(course_size)]))
 
         # Calculate course size delta against aggregate average
-        course_size_delta = grade_metrics.get_course_size_delta(self.csv_row, self.agg_data)
+        course_size_delta = compute_metrics.get_course_size_delta(self.csv_row, self.agg_data)
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseSizeDelta'), str(course_size_delta)]))
 
         responses = f"{self.pdf_json['eval_info']['response_count']}"
@@ -141,21 +141,21 @@ class _ScorecardDoc:
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\ResponseRate'), response_rate]))
 
         # Calculate response rate delta (currently returns N/A until aggregate tracking is added)
-        response_delta = grade_metrics.get_response_rate_delta(self.pdf_json, self.agg_data)
+        response_delta = compute_metrics.get_response_rate_delta(self.pdf_json, self.agg_data)
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\ResponseDelta'), response_delta]))
 
         avg_p1 = f"{self.pdf_json['eval_info']['avg1']}"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\AvgPone'), str(avg_p1)]))
 
         # Calculate avg1 delta against aggregate baseline
-        avg_p1_delta = grade_metrics.get_avg_part1_delta(self.pdf_json, self.agg_data)
+        avg_p1_delta = compute_metrics.get_avg_part1_delta(self.pdf_json, self.agg_data)
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\AvgPoneDelta'), avg_p1_delta]))
 
         avg_p2 = f"{self.pdf_json['eval_info']['avg2']}"
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\AvgPtwo'), str(avg_p2)]))
 
         # Calculate avg2 delta against aggregate baseline
-        avg_p2_delta = grade_metrics.get_avg_part2_delta(self.pdf_json, self.agg_data)
+        avg_p2_delta = compute_metrics.get_avg_part2_delta(self.pdf_json, self.agg_data)
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\AvgPtwoDelta'), avg_p2_delta]))
 
         # Median grade from aggregate data
@@ -163,12 +163,12 @@ class _ScorecardDoc:
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\MedianGrade'), median_grade]))
 
         # Median grade delta (qualitative comparison, currently returns N/A)
-        median_grade_delta = grade_metrics.get_median_grade_delta(self.csv_row, self.agg_data)
+        median_grade_delta = compute_metrics.get_median_grade_delta(self.csv_row, self.agg_data)
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\MedianGradeDelta'), median_grade_delta]))
 
         # GPA and delta calculation
         gpa = round(float(self.csv_row['GPA']), 2)
-        gpa_delta = grade_metrics.get_gpa_delta(self.csv_row, self.agg_data)
+        gpa_delta = compute_metrics.get_gpa_delta(self.csv_row, self.agg_data)
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GPA'), str(gpa)]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GPADelta'), str(gpa_delta)]))
         
@@ -196,7 +196,7 @@ class _ScorecardDoc:
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\DropDelta'), drop_delta]))
 
         # Withdrawal metrics using helper function
-        withdraw_metrics = grade_metrics.get_withdraw_metrics(self.csv_row, self.agg_data)
+        withdraw_metrics = compute_metrics.get_withdraw_metrics(self.csv_row, self.agg_data)
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\WithdrawNum'), str(withdraw_metrics['count'])]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\WithdrawPct'), withdraw_metrics['pct']]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\WithdrawDelta'), withdraw_metrics['delta']]))
@@ -250,37 +250,37 @@ class _ScorecardDoc:
         """
 
         # Grade A (A+, A, A-)
-        grade_a_metrics = grade_metrics.get_grade_metrics(self.csv_row, self.agg_data, 'A')
+        grade_a_metrics = compute_metrics.get_grade_metrics(self.csv_row, self.agg_data, 'A')
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeACount'), str(grade_a_metrics['count'])]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeAPct'), grade_a_metrics['pct']]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeADelta'), grade_a_metrics['delta']]))
 
         # Grade B (B+, B, B-)
-        grade_b_metrics = grade_metrics.get_grade_metrics(self.csv_row, self.agg_data, 'B')
+        grade_b_metrics = compute_metrics.get_grade_metrics(self.csv_row, self.agg_data, 'B')
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBCount'), str(grade_b_metrics['count'])]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBPct'), grade_b_metrics['pct']]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBDelta'), grade_b_metrics['delta']]))
 
         # Grade C (C+, C)
-        grade_c_metrics = grade_metrics.get_grade_metrics(self.csv_row, self.agg_data, 'C')
+        grade_c_metrics = compute_metrics.get_grade_metrics(self.csv_row, self.agg_data, 'C')
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCCount'), str(grade_c_metrics['count'])]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCPct'), grade_c_metrics['pct']]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCDelta'), grade_c_metrics['delta']]))
 
         # Grade D
-        grade_d_metrics = grade_metrics.get_grade_metrics(self.csv_row, self.agg_data, 'D')
+        grade_d_metrics = compute_metrics.get_grade_metrics(self.csv_row, self.agg_data, 'D')
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDCount'), str(grade_d_metrics['count'])]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDPct'), grade_d_metrics['pct']]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDDelta'), grade_d_metrics['delta']]))
 
         # Grade E
-        grade_e_metrics = grade_metrics.get_grade_metrics(self.csv_row, self.agg_data, 'E')
+        grade_e_metrics = compute_metrics.get_grade_metrics(self.csv_row, self.agg_data, 'E')
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeECount'), str(grade_e_metrics['count'])]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeEPct'), grade_e_metrics['pct']]))
         self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeEDelta'), grade_e_metrics['delta']]))
 
         # Quartile grades from aggregate data
-        quartile_metrics = grade_metrics.get_quartile_metrics(self.agg_data)
+        quartile_metrics = compute_metrics.get_quartile_metrics(self.agg_data)
         q1 = str(quartile_metrics['q1']) if quartile_metrics['q1'] else 'N/A'
         q2 = str(quartile_metrics['q2']) if quartile_metrics['q2'] else 'N/A'
         q3 = str(quartile_metrics['q3']) if quartile_metrics['q3'] else 'N/A'
