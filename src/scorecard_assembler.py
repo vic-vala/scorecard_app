@@ -547,25 +547,25 @@ def assemble_instructor_scorecard(
     Basic implementation that finds courses by instructor and saves to DataFrame.
     This is the equivalent of assemble_scorecard but for professors.
     """
-    print(f" Starting instructor scorecard for: {instructor.get('Instructor', 'N/A')}")
+    print(f"  Starting instructor scorecard for: {instructor.get('Instructor', 'N/A')}")
 
     # Get all courses for this instructor
-    instructor_courses = data_handler.get_courses_by_instructor(instructor, csv_path)
+    instructor_courses = get_courses_by_instructor(instructor, csv_path)
 
     if instructor_courses.empty:
         print(f" No courses found for instructor: {instructor.get('Instructor', 'N/A')}")
         return None
 
     # Print summary of what was found
-    print(f"✅ Instructor {instructor.get('Instructor', 'N/A')} teaches {len(instructor_courses)} courses:")
+    print(f"  ✅ Instructor {instructor.get('Instructor', 'N/A')} teaches {len(instructor_courses)} courses:")
     for _, course in instructor_courses.head(5).iterrows():  # Show first 5 as sample
         subject = course.get('Subject', 'UNKN')
         catalog = course.get('Catalog Nbr', '000')
         class_nbr = course.get('Class Nbr', '')
-        print(f"   - {subject} {catalog} (Class {class_nbr})")
+        print(f"    - {subject} {catalog} (Class {class_nbr})")
 
     if len(instructor_courses) > 5:
-        print(f"   ... and {len(instructor_courses) - 5} more courses")
+        print(f"    ... and {len(instructor_courses) - 5} more courses")
 
     # TODO: Add LaTeX generation for instructor scorecard here
     # For now, just return the DataFrame as requested

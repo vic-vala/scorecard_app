@@ -108,7 +108,11 @@ class Application:
             )
         
         for _, instructor in self.selected_scorecard_instructors.iterrows():
-            pass
+            scorecard_assembler.assemble_instructor_scorecard(
+                instructor=instructor,
+                config=self.config,
+                csv_path=self.csv_path[0],
+            )
 
 if __name__ == "__main__":
     try:
