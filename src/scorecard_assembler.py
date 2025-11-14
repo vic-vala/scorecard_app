@@ -4,7 +4,7 @@ import re
 import sys
 import pandas as pd
 from typing import Any, Dict, Mapping, Optional, List, Tuple
-from src.utils import course_to_json_path, course_to_stem, _is_true
+from src.utils import course_to_json_path, course_to_stem, _is_true, instructor_to_stem
 
 from pylatex import(
     Command,

@@ -120,6 +120,24 @@ def course_to_stem(course):
 
     return f"{subject}_{catalog}_{instructor_last}_{term}_{year}_{class_nbr}"
 
+def instructor_to_stem(course):
+    """
+    From a instructor row build the stem used for filenames
+        Last_First
+    """
+    instructor_last = _slug(
+        course.get("Instructor Last")
+        or course.get("Instructor_Last")
+        or course.get("InstructorLast")
+    )
+    instructor_first = _slug(
+        course.get("Instructor First")
+        or course.get("Instructor_First")
+        or course.get("InstructorFirst")
+    )
+
+    return f"{instructor_last}_{instructor_first}"
+
 def _parse_filename(filename: str):
     """
     Parse filenames of the form:
