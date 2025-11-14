@@ -328,10 +328,23 @@ class SetupWizard:
             )
             if path:
                 self.manual_model_path.set(path)
-                messagebox.showinfo(
-                    "Model Selected",
-                    f"Model path set to:\n{path}\n\nProceeding to LaTeX installation."
-                )
+
+                # Update config.json with the new model path
+                if self.setup.update_config_model_path(path):
+                    messagebox.showinfo(
+                        "Model Selected",
+                        f"Model path set to:\n{path}\n\n"
+                        f"Configuration updated successfully.\n\n"
+                        f"Proceeding to LaTeX installation."
+                    )
+                else:
+                    messagebox.showwarning(
+                        "Configuration Update Failed",
+                        f"Model path selected but config update failed.\n"
+                        f"You may need to manually update the config later.\n\n"
+                        f"Proceeding to LaTeX installation."
+                    )
+
                 self.show_page(3)
                 self.start_latex_install()
             else:
@@ -405,7 +418,12 @@ class SetupWizard:
             self.root.after(0, lambda: self.latex_progress.start())
             self.root.after(0, lambda: self.add_latex_log("Starting TinyTeX installation...\n"))
 
-            success = self.setup.install_tinytex()
+            # Define callback to update GUI with installation progress
+            def log_callback(message):
+                # Schedule GUI update on main thread
+                self.root.after(0, lambda msg=message: self.add_latex_log(msg + "\n"))
+
+            success = self.setup.install_tinytex(log_callback=log_callback)
 
             self.root.after(0, lambda: self.on_latex_complete(success))
 
