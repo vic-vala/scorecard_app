@@ -602,6 +602,7 @@ def assemble_instructor_scorecard(
     paths = config['paths']
     histogram_dir = paths['grade_histogram_dir']
     tex_output_path = paths['tex_dir']
+    scorecard_output_path = paths['scorecard_dir']
 
     # Get all courses for this instructor
     instructor_courses = get_courses_by_instructor(instructor, csv_path, True)
@@ -673,7 +674,11 @@ def assemble_instructor_scorecard(
     first_course = instructor_courses.iloc[0]
     gpa_graph_dir = paths['instructor_course_gpa_graph_dir']
     gpa_graph_name = instructor_to_stem(first_course)
-    gpa_graph_full_path = os.path.join(gpa_graph_dir, f"{gpa_graph_name}.png")
+    gpa_graph_full_path = os.path.abspath(os.path.join(gpa_graph_dir, f"{gpa_graph_name}.png"))
+
+    # Convert backslashes to forward slashes for LaTeX compatibility on Windows
+    if isinstance(gpa_graph_full_path, str):
+        gpa_graph_full_path = gpa_graph_full_path.replace('\\', '/')
 
     master_doc.append(NoEscape(
         rf'\includegraphics[width=\textwidth,height=1\textheight,keepaspectratio]{{{gpa_graph_full_path}}}'
@@ -683,5 +688,10 @@ def assemble_instructor_scorecard(
     output_filename = f"{instructor.get('Instructor')}_Overview"
     full_output_path = os.path.join(tex_output_path, output_filename)
     master_doc.generate_tex(full_output_path)
-
     print(f"  ✅ Saved instructor LaTeX to {full_output_path}")
+
+    # Save the latex as a pdf now
+    pdf_filename = f"{output_filename}.pdf"
+    full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
+    master_doc.generate_pdf(full_scorecard_output_path, clean_tex=True, compiler='pdflatex')
+    print(f"📝✅ Saved instructor Scorecard to {full_scorecard_output_path}")
