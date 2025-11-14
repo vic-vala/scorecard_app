@@ -4,7 +4,7 @@ import re
 import sys
 import pandas as pd
 from typing import Any, Dict, Mapping, Optional, List, Tuple
-from src.utils import course_to_json_path, course_to_stem
+from src.utils import course_to_json_path, course_to_stem, _is_true
 
 from pylatex import(
     Command,
@@ -14,19 +14,28 @@ from pylatex import(
     Section,
 )
 from src import latex_sections
-from src.data_handler import aggregate_for_row
+from src.data_handler import aggregate_for_row, get_courses_by_instructor
 from src import compute_metrics
 
 # Organizing all the data necessary for automating the latex, much cleaner containing
 #   everything in one class.
 class _ScorecardDoc:
 
-    def __init__(self, csv_row: Dict[str, Any], pdf_json: str, grade_hist: str, output_filename: str, agg_data: Dict[str, Any]):
+    def __init__(
+            self, 
+            csv_row: Dict[str, Any], 
+            pdf_json: str, 
+            grade_hist: str, 
+            output_filename: str, 
+            agg_data: Dict[str, Any],
+            config
+            ):
         self.csv_row = csv_row
         self.pdf_json = pdf_json
         self.grade_hist = grade_hist
         self.output_filename = output_filename
         self.agg_data = agg_data
+        self.config = config
 
         # Tex related fields
         self.doc = None
@@ -127,9 +136,11 @@ class _ScorecardDoc:
             'definecolor',
             arguments=['accent', 'HTML', '1F4E79']
         ))
-        self.doc.preamble.append(NoEscape(r'\colorlet{pos}{green!60!black}'))
-        self.doc.preamble.append(NoEscape(r'\colorlet{neg}{red!70!black}'))
-        self.doc.preamble.append(NoEscape(r'\colorlet{neu}{gray!70!black}'))
+        # These are set to black currently until we want to add colors to deltas back. 
+        # This needs to be dynamic since + doesn't always mean "good", and such
+        self.doc.preamble.append(NoEscape(r'\colorlet{pos}{grey!60!black}')) 
+        self.doc.preamble.append(NoEscape(r'\colorlet{neg}{grey!70!black}'))
+        self.doc.preamble.append(NoEscape(r'\colorlet{neu}{grey!70!black}'))
 
         # Overview field commands
         self._add_overview_fields()
@@ -241,33 +252,80 @@ class _ScorecardDoc:
 
     # Assigning values to the fields in the evaluation metrics section
     def _add_evaluation_metrics_fields(self):
-        # TODO: have some function that dynamically chooses the outliers based on a 
-        #   deviation threshold? Hardcoded choices for now, but dynamic values
-        #   Could use a dict for the full metric descriptions
-        outlier_avg = 4.5   # obsolete, will remove
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutlierAvg'), str(outlier_avg)]))   # obsolete
+        """
+        Build LaTeX commands for the 5 lowest scoring evaluation metrics across part_1 and part_2
+        """
 
-        outlier1_name = f"Textbook/supplementary material in support of the course."
-        outlier1_val = self.pdf_json['part_1']['textbook_avg']
-        outlier1_delta = -0.43
+        part_1 = self.pdf_json.get("part_1", {})
+        part_2 = self.pdf_json.get("part_2", {})
 
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutOneName'), outlier1_name]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutOneScore'), str(outlier1_val)]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutOneDelta'), str(outlier1_delta)]))
-        
-        outlier2_name = f"Value of assigned homework in support of course topics."
-        outlier2_val = self.pdf_json['part_1']['homework_value_avg']
-        outlier2_delta = -0.24
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutTwoName'), outlier2_name]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutTwoScore'), str(outlier2_val)]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutTwoDelta'), str(outlier2_delta)]))
-        
-        outlier3_name = f"Value of laboratory assignments/projects in support of the course topics."
-        outlier3_val = self.pdf_json['part_1']['lab_value_avg']
-        outlier3_delta = 0.17
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutThreeName'), outlier3_name]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutThreeScore'), str(outlier3_val)]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutThreeDelta'), str(outlier3_delta)]))
+        metric_descriptions = {
+            # part_1
+            "textbook_avg": "Textbook supplementary material in support of the course",
+            "homework_value_avg": "Value of assigned homework in support of course topics",
+            "lab_value_avg": "Value of laboratory assignments projects in support of the course topics",
+            "exam_reason_avg": "Reasonableness of exams and quizzes in covering course material",
+            "lab_weight_avg": "Weight given to labs or projects relative to exams and quizzes",
+            "homework_weight_avg": "Weight given to homework assignments relative to exams and quizzes",
+            "grade_crit_avg": "Definition and application of criteria for grading",
+
+            # part_2
+            "instr_prep_avg": "The instructor was well prepared",
+            "instr_comm_idea_avg": "The instructor communicated ideas clearly",
+            "availability_avg": "The instructor or assistants were available for outside assistance",
+            "enthus_avg": "The instructor exhibited enthusiasm for and interest in the subject",
+            "instr_approach_avg": "The instructors approach stimulated student thinking",
+            "course_mat_application_avg": "The instructor related course material to its applications",
+            "present_methods_avg": "The instructors methods of presentation supported student learning",
+            "fair_grading_avg": "The instructors grading was fair impartial and adequate",
+            "timely_grading_avg": "The instructor returned graded materials within a reasonable period",
+        }
+
+        # collect all numeric metrics as (metric_key, score_float, score_original_str)
+        all_metrics = []
+
+        for key, val in part_1.items():
+            try:
+                score_float = float(val)
+            except (TypeError, ValueError):
+                continue
+            all_metrics.append((key, score_float, val))
+
+        for key, val in part_2.items():
+            try:
+                score_float = float(val)
+            except (TypeError, ValueError):
+                continue
+            all_metrics.append((key, score_float, val))
+
+        # sort by score (ascending: lowest scores first)
+        all_metrics.sort(key=lambda item: item[1])
+
+        # mapping from rank to word for latex command names
+        # \OutOneName, \OutTwoName, ..., \OutFiveScore
+        index_to_word = {
+            1: "One",
+            2: "Two",
+            3: "Three",
+            4: "Four",
+            5: "Five",
+        }
+
+        # take the 5 lowest scores and create latex commands for each
+        for idx, (metric_key, _score_float, score_str) in enumerate(all_metrics[:5], start=1):
+            word = index_to_word.get(idx)
+            if not word:
+                break
+
+            metric_name = metric_descriptions.get(metric_key, metric_key)
+
+            self.doc.preamble.append(
+                Command("newcommand", [NoEscape(f"\\Out{word}Name"), metric_name])
+            )
+
+            self.doc.preamble.append(
+                Command("newcommand", [NoEscape(f"\\Out{word}Score"), str(score_str)])
+            )
     
     # Assigning values used in LLM comment summary section
     def _add_summary_fields(self):
@@ -275,10 +333,15 @@ class _ScorecardDoc:
         # TODO: Modify pdf_json schema to also have a count value for the comments maybe
         #   or organized txt file, json might be easier
         comment_count = 4
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CommentCount'), str(comment_count)]))
+        self.doc.preamble.append(
+            Command('newcommand', [NoEscape(r'\CommentCount'), str(comment_count)])
+        )
 
-        llm_summary = self.pdf_json['llm_summary']
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\LLMSummary'), llm_summary]))
+        llm_summary = self.pdf_json['llm_summary']  
+        self.doc.preamble.append(
+            Command('newcommand', [NoEscape(r'\LLMSummary'), NoEscape(llm_summary)])
+        )
+
     
     # Assigning values used in grade distribution section
     def _add_grade_distr_fields(self):
@@ -377,7 +440,8 @@ class _ScorecardDoc:
         self._add_page_title()
         self._add_overview_section()
         self._add_evaluation_section()
-        self._add_comment_section()
+        if (_is_true(self.config["scorecard_gen_settings"]["include_LLM_insights"])):
+            self._add_comment_section()
         self._add_grade_distribution_section()
     
     def _add_page_title(self):
@@ -462,7 +526,8 @@ def assemble_scorecard(
         pdf_json=pdf_json,
         grade_hist=histogram_full_path,
         output_filename=histrogram_name,
-        agg_data=agg_data
+        agg_data=agg_data,
+        config=config,
         )
     
     latex_doc.doc_setup()
@@ -478,5 +543,35 @@ def assemble_scorecard(
     latex_doc.doc.generate_pdf(full_scorecard_output_path, clean_tex=True, compiler='pdflatex')
     print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
 
+def assemble_instructor_scorecard(
+    instructor: Mapping[str, Any],
+    config,
+    csv_path,
+):
+    """
+    Basic implementation that finds courses by instructor and saves to DataFrame.
+    This is the equivalent of assemble_scorecard but for professors.
+    """
+    print(f"  Starting instructor scorecard for: {instructor.get('Instructor', 'N/A')}")
 
+    # Get all courses for this instructor
+    instructor_courses = get_courses_by_instructor(instructor, csv_path)
 
+    if instructor_courses.empty:
+        print(f" No courses found for instructor: {instructor.get('Instructor', 'N/A')}")
+        return None
+
+    # Print summary of what was found
+    print(f"  ✅ Instructor {instructor.get('Instructor', 'N/A')} teaches {len(instructor_courses)} courses:")
+    for _, course in instructor_courses.head(5).iterrows():  # Show first 5 as sample
+        subject = course.get('Subject', 'UNKN')
+        catalog = course.get('Catalog Nbr', '000')
+        class_nbr = course.get('Class Nbr', '')
+        print(f"    - {subject} {catalog} (Class {class_nbr})")
+
+    if len(instructor_courses) > 5:
+        print(f"    ... and {len(instructor_courses) - 5} more courses")
+
+    # TODO: Add LaTeX generation for instructor scorecard here
+    # For now, just return the DataFrame as requested
+    return instructor_courses

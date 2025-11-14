@@ -463,3 +463,40 @@ def get_unique_courses(csv_path):
     )
 
     return result
+
+def get_courses_by_instructor(instructor_row: pd.Series, csv_path: str) -> pd.DataFrame:
+    """
+    Returns a DataFrame of all courses taught by a given instructor.
+
+    Args:
+        instructor_row: A row from selected_scorecard_instructors containing instructor info
+        csv_path: Path to the CSV file containing course data
+
+    Returns:
+        DataFrame with all courses taught by the instructor
+    """
+    df = pd.read_csv(csv_path, dtype=str)
+
+    # Normalize columns for reliable matching
+    for col in ["Instructor", "Subject", "Catalog Nbr", "Class Nbr", "Session Code"]:
+        if col in df.columns:
+            df[col] = df[col].fillna("").astype(str).str.strip()
+
+
+    mask = pd.Series(True, index=df.index)
+
+    # Match by instructor name
+    if "Instructor" in instructor_row and instructor_row["Instructor"]:
+        mask &= (df["Instructor"] == instructor_row["Instructor"])
+    else:
+        # Fall back to matching by individual name components if available
+        if "Instructor First" in instructor_row and instructor_row["Instructor First"]:
+            mask &= (df["Instructor First"] == instructor_row["Instructor First"])
+        if "Instructor Last" in instructor_row and instructor_row["Instructor Last"]:
+            mask &= (df["Instructor Last"] == instructor_row["Instructor Last"])
+
+    # Return filtered results
+    result = df[mask].copy()
+
+    print(f"✅ Found {len(result)} courses for instructor: {instructor_row.get('Instructor', 'N/A')}")
+    return result

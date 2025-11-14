@@ -22,37 +22,27 @@ def get_overview_section_template():
 \begin{tcolorbox}
 	{\Large\bfseries\textcolor{accent}{Overview}}
 	\ifShowHdrOverview\hfill\textbf{\CourseHeader}\fi
+    \vspace{2pt}
 
 	\renewcommand{\arraystretch}{1.25}
-	\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X c >{\raggedright\arraybackslash}X @{}}
+	\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
 
-	% -------- Left column --------
+ 	% -------- Left column --------
 	\begin{tabular}{@{}l >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
 		\MetricLeft{Course Size}{\CourseSize}{} & \autoD{\CourseSizeDelta}\\
-		\MetricLeft{Responses}{\Responses}{\ResponseRate} & \autoD{\ResponseDelta}\\
+		\MetricLeft{Responses}{\Responses}{\ResponseRate} \\
 		\MetricLeft{Avg Part 1}{\AvgPone}{} & \autoD{\AvgPoneDelta}\\
 		\MetricLeft{Avg Part 2}{\AvgPtwo}{} & \autoD{\AvgPtwoDelta}\\
 		\MetricLeft{Median Grade}{\MedianGrade}{} & \autoD{\MedianGradeDelta}\\
-		\MetricLeft{GPA}{\GPA}{} & \autoD{\GPADelta}\\
 	\end{tabular}
 	&
-	% -------- Center: pie chart placeholder --------
-	\begin{minipage}[c]{1.9in}
-		\centering
-		\fbox{\begin{minipage}[c][1.9in][c]{1.7in}\centering
-			\small Pie Chart\\[2pt]Placeholder
-			\par\medskip
-			% Replace box with actual image
-			% \includegraphics[width=1.7in]{piechart.png}
-		\end{minipage}}
-	\end{minipage}
-	&
-	% -------- Right column --------
+ 	% -------- Right column --------
 	\begin{tabular}{@{}l >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
 		\MetricLeft{Pass}{\PassNum}{\PassPct} & \autoD{\PassDelta}\\
 		\MetricLeft{Fail}{\FailNum}{\FailPct} & \autoD{\FailDelta}\\
 		\MetricLeft{Drop}{\DropNum}{\DropPct} & \autoD{\DropDelta}\\
 		\MetricLeft{Withdraw}{\WithdrawNum}{\WithdrawPct} & \autoD{\WithdrawDelta}\\
+        \MetricLeft{GPA}{\GPA}{} & \autoD{\GPADelta}\\
 	\end{tabular}
 
 	\end{tabularx}
@@ -64,18 +54,17 @@ def get_evaluation_section_template():
     """Returns the LaTeX template for the Evaluation Metrics section"""
     return r'''
 \begin{tcolorbox}
-	{\Large\bfseries\textcolor{accent}{Evaluation Metrics}}
+	{\Large\bfseries\textcolor{accent}{Lowest Evaluation Metrics}}
 	\ifShowHdrEval\hfill\textbf{\CourseHeader}\fi
-
-	\vspace{2pt}
-	\textbf{Outliers:}
 
 	\vspace{2pt}
 	\renewcommand{\arraystretch}{1.2}
 	\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
-		\MetricLeft{\OutOneName}{\OutOneScore/5}{} & \autoD{\OutOneDelta}\\
-		\MetricLeft{\OutTwoName}{\OutTwoScore/5}{} & \autoD{\OutTwoDelta}\\
-		\MetricLeft{\OutThreeName}{\OutThreeScore/5}{} & \autoD{\OutThreeDelta}\\
+		\MetricLeft{\OutOneName} {\OutOneScore/5}{} \\
+		\MetricLeft{\OutTwoName} {\OutTwoScore/5}{} \\
+		\MetricLeft{\OutThreeName} {\OutThreeScore/5}{} \\
+        \MetricLeft{\OutFourName} {\OutFourScore/5}{} \\
+        \MetricLeft{\OutFiveName} {\OutFiveScore/5}{} \\
 	\end{tabularx}
 \end{tcolorbox}
 '''
@@ -85,42 +74,29 @@ def get_comment_section_template():
     """Returns the LaTeX template for the Comment Summary section"""
     return r'''
 \begin{tcolorbox}
-	{\Large\bfseries\textcolor{accent}{Comment Summary}}
+	{\Large\bfseries\textcolor{accent}{Comment Summary (AI Generated)}}
 
-	\vspace{2pt}
-	\renewcommand{\arraystretch}{1.2}
-	\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
-		\MetricLeft{Responses Count}{\Responses}{} & \autoD{\ResponseDelta}\\
-	\end{tabularx}
-
-	\vspace{2pt}
-    \textbf{(AI Generated)}
 	\noindent \LLMSummary
 \end{tcolorbox}
 '''
 
 
 def get_grade_distribution_section_template(grade_dist_image):
-    """
-    Takes in the grade_distr image &
-    returns the LaTeX template for the Grade Distribution section 
-    """
     return r'''
 \begin{tcolorbox}
 	{\Large\bfseries\textcolor{accent}{Grade Distribution}}
 
-	% Top line: Pass/Fail totals on left, GPA on right
 	\vspace{2pt}
 	\noindent\textbf{Pass/Fail Totals:}~\PassNum~(\PassPct)~pass~\autoD{\PassDelta}~/~\FailNum~(\FailPct)~fail~\autoD{\FailDelta}\hfill\textbf{GPA:}~\GPA~\autoD{\GPADelta}
 
 	\vspace{2pt}
-	% Left (histogram) and Right (grade table)
 	\begin{tabularx}{\textwidth}{@{} X T{\RightColW} @{}}
-		\fbox{\begin{minipage}[c][\GradeVisH][c]{\linewidth}\centering
-			\small 
-    \includegraphics[width=1\linewidth, height=1\GradeVisH, keepaspectratio]{''' + grade_dist_image + r'''}
-    
-		\end{minipage}}
+
+        % ---- Histogram WITHOUT outline ----
+		\begin{minipage}[c][\GradeVisH][c]{\linewidth}\centering
+			\includegraphics[width=\linewidth, height=\GradeVisH, keepaspectratio]{''' + grade_dist_image + r'''}
+		\end{minipage}
+
 		&
 		\begingroup\centering
 			\renewcommand{\arraystretch}{1.1}
@@ -139,11 +115,11 @@ def get_grade_distribution_section_template(grade_dist_image):
 	\end{tabularx}
 
 	\vspace{2pt}
-	% Quartiles centered under histogram
 	\noindent\makebox[\dimexpr\linewidth-\RightColW\relax][c]{\textbf{Q1:}~\Qone~\autoD{\QoneDelta}\quad\textbf{Median:}~\Qtwo~\autoD{\QtwoDelta}\quad\textbf{Q3:}~\Qthree~\autoD{\QthreeDelta}}
 
 \end{tcolorbox}
 '''
+
 
 
 def get_helper_commands_template():
@@ -153,7 +129,7 @@ def get_helper_commands_template():
 
 \newcommand{\PageTitle}{\LARGE\bfseries\textcolor{accent}{\CourseHeader}}
 
-\newcommand{\PageSubtitle}{\footnotesize\textcolor{neu}{\BaselineText}}
+\newcommand{\PageSubtitle}{\footnotesize\textcolor{neu}{Compared Against: \BaselineText}}
 
 \newcommand{\posD}[1]{\textcolor{pos}{(#1)}}
 

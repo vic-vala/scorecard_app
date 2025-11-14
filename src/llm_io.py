@@ -120,9 +120,9 @@ def run_llm(
         print("  ⚠️ Placeholders enabled for LLM generation! debug_replace_LLM_with_placeholder is enabled in config!")
 
         placeholder_text = (
-            "**Positive Feedback:** Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n"
-            "**Negative Feedback:** Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n"
-            "**Overall Tone:** Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo."
+            "\\textbf{Positive Feedback:} Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n\n"
+            "\\textbf{Negative Feedback:} Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n\n"
+            "\\textbf{Overall Tone:} Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo."
         )
         for _, course in selected_scorecard_courses.iterrows():
             pdf_json_path = course_to_json_path(course=course,config=config)
