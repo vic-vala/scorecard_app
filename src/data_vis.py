@@ -659,9 +659,9 @@ def generate_instructor_course_gpa_graph(
     fig_width = width_px / dpi
     fig_height = height_px / dpi
 
-    # colors
-    positive_color = plot_cfg.get("positive_color", "#51A058")   # above baseline
-    negative_color = plot_cfg.get("negative_color", "#d7263d")   # below baseline
+    # colors (gradients)
+    positive_gradient = ("#0e7300", "#6be002") # above baseline
+    negative_gradient = ("#930008", "#d90014") # below baseline
 
     zero_line_color = plot_cfg.get("zero_line_color", "#000000")
     zero_linewidth = float(plot_cfg.get("zero_linewidth", 1.5))
@@ -795,8 +795,32 @@ def generate_instructor_course_gpa_graph(
     # zero line in the middle (vertical)
     ax.axvline(0.0, color=zero_line_color, linewidth=zero_linewidth)
 
-    colors = [positive_color if v >= 0.0 else negative_color for v in diffs_arr]
-    ax.barh(y, diffs_arr, color=colors, height=bar_height)
+    from matplotlib.colors import LinearSegmentedColormap
+
+    pos_cmap = LinearSegmentedColormap.from_list("pos_grad", list(positive_gradient))
+    neg_cmap = LinearSegmentedColormap.from_list("neg_grad", list(negative_gradient))
+
+    for yi, v in zip(y, diffs_arr):
+        if not math.isfinite(v) or v == 0.0:
+            continue
+
+        if v > 0.0:
+            cmap = pos_cmap
+            x0, x1 = 0.0, v
+            grad = np.linspace(0.0, 1.0, 256).reshape(1, -1)
+        else:
+            cmap = neg_cmap
+            x0, x1 = v, 0.0
+            grad = np.linspace(1.0, 0.0, 256).reshape(1, -1)
+
+        ax.imshow(
+            grad,
+            aspect="auto",
+            cmap=cmap,
+            extent=[x0, x1, yi - bar_height / 2.0, yi + bar_height / 2.0],
+            origin="lower",
+            zorder=2,
+        )
 
     ax.set_yticks(y)
     if n_courses >= 40:
