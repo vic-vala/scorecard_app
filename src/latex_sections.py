@@ -166,3 +166,47 @@ def get_box_style_template():
 	boxsep=5pt, left=8pt, right=8pt, top=8pt, bottom=8pt,
 }
 '''
+
+def get_short_course_card():
+    """Returns the LaTeX template for short course cards for prof scorecards"""
+    return r'''
+\begingroup
+    % Optional: label for plotting/aggregation across courses
+    \begin{tcolorbox}[before skip=6pt, after skip=8pt]
+        {\large\bfseries\textcolor{accent}{\CourseHeader}}\par
+        \vspace{4pt}
+        {\small
+        \renewcommand{\arraystretch}{1.25}
+        \begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+            \begin{tabular}{@{}l >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
+                \MetricLeft{Course Size}{\CourseSize}{} & \autoD{\CourseSizeDelta}\\
+                \MetricLeft{Responses}{\Responses}{\ResponseRate} \\
+                \MetricLeft{Avg Part 1}{\AvgPone}{} & \autoD{\AvgPoneDelta}\\
+                \MetricLeft{Avg Part 2}{\AvgPtwo}{} & \autoD{\AvgPtwoDelta}\\
+                \MetricLeft{Median Grade}{\MedianGrade}{} & \autoD{\MedianGradeDelta}\\
+            \end{tabular}
+            &
+            \begin{tabular}{@{}l >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
+                \MetricLeft{Pass}{\PassNum}{\PassPct} & \autoD{\PassDelta}\\
+                \MetricLeft{Fail}{\FailNum}{\FailPct} & \autoD{\FailDelta}\\
+                \MetricLeft{Drop}{\DropNum}{\DropPct} & \autoD{\DropDelta}\\
+                \MetricLeft{Withdraw}{\WithdrawNum}{\WithdrawPct} & \autoD{\WithdrawDelta}\\
+                \MetricLeft{GPA}{\GPA}{} & \autoD{\GPADelta}\\
+            \end{tabular}
+        \end{tabularx}}
+
+        \vspace{10pt}
+        {\small
+        \centerline{\textbf{Lowest Evaluation Metrics}}\par
+        \vspace{4pt}
+        \renewcommand{\arraystretch}{1.2}
+        \begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
+            \MetricLeft{\OutOneName}   {\OutOneScore/5}{} \\
+            \MetricLeft{\OutTwoName}   {\OutTwoScore/5}{} \\
+            \MetricLeft{\OutThreeName} {\OutThreeScore/5}{} \\
+            \MetricLeft{\OutFourName}  {\OutFourScore/5}{} \\
+            \MetricLeft{\OutFiveName}  {\OutFiveScore/5}{} \\
+        \end{tabularx}}
+    \end{tcolorbox}
+\endgroup
+'''

@@ -4,7 +4,7 @@ import re
 import sys
 import pandas as pd
 from typing import Any, Dict, Mapping, Optional, List, Tuple
-from src.utils import course_to_json_path, course_to_stem, _is_true
+from src.utils import course_to_json_path, course_to_stem, _is_true, instructor_to_stem
 
 from pylatex import(
     Command,
@@ -28,7 +28,9 @@ class _ScorecardDoc:
             grade_hist: str, 
             output_filename: str, 
             agg_data: Dict[str, Any],
-            config
+            config,
+            short:bool,
+            newcommand:bool,
             ):
         self.csv_row = csv_row
         self.pdf_json = pdf_json
@@ -36,6 +38,8 @@ class _ScorecardDoc:
         self.output_filename = output_filename
         self.agg_data = agg_data
         self.config = config
+        self.short = short
+        self.newcommand = newcommand
 
         # Tex related fields
         self.doc = None
@@ -44,8 +48,28 @@ class _ScorecardDoc:
         self.show_hdr_title = True
         self.baseline_text = agg_data['aggregate_name']
 
+        self.write_course_cmds_to_preamble = True
+
         # Compute all metrics on initialization
         self.metrics = self._compute_all_metrics()
+
+    def _course_cmd_container(self):
+        """
+        where to put course-specific \\newcommand/\\renewcommand definitions.
+
+        - preamble (default) for single-course docs
+        - body for multi-course instructor docs
+        """
+        if self.doc is None:
+            raise ValueError("Document has not been initialized")
+        return self.doc.preamble if self.write_course_cmds_to_preamble else self.doc
+
+    
+    def _latex_command_name(self) -> str:
+        """
+        Return 'newcommand' or 'renewcommand' based on self.newcommand.
+        """
+        return "newcommand" if self.newcommand else "renewcommand"
 
     def _compute_all_metrics(self) -> Dict[str, Any]:
         """
@@ -166,95 +190,101 @@ class _ScorecardDoc:
     # Assigning values to the fields in the overview section
     def _add_overview_fields(self):
 
+        cmd = self._latex_command_name()
+        container = self._course_cmd_container()
+
         course_name = f"{self.pdf_json['eval_info']['department']} {self.pdf_json['eval_info']['course']}"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseName'), course_name]))
+        container.append(Command(cmd, [NoEscape(r'\CourseName'), course_name]))
         course_year = f"{self.pdf_json['eval_info']['year']}"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseYear'), course_year]))
+        container.append(Command(cmd, [NoEscape(r'\CourseYear'), course_year]))
 
         # Term pulled form json, session pulled from csv row
         course_session = str(self.csv_row['Session Code'])
         course_term = f"{self.pdf_json['eval_info']['term']} {course_session}"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseTerm'), course_term]))
+        container.append(Command(cmd, [NoEscape(r'\CourseTerm'), course_term]))
 
         # Course code (5-digit one) pulled from json
         course_code = f"{self.pdf_json['eval_info']['course_number']}"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseCode'), course_code]))
+        container.append(Command(cmd, [NoEscape(r'\CourseCode'), course_code]))
 
         instructor = f"{self.pdf_json['eval_info']['professor']}"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\Instructor'), instructor]))
+        container.append(Command(cmd, [NoEscape(r'\Instructor'), instructor]))
 
         # Baseline Text
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\BaselineText'), self.baseline_text]))
+        container.append(Command(cmd, [NoEscape(r'\BaselineText'), self.baseline_text]))
 
         # Pulled from csv row
         course_size = int(self.csv_row['Class Size'])
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseSize'), str(course_size)]))
+        container.append(Command(cmd, [NoEscape(r'\CourseSize'), str(course_size)]))
 
         # Calculate course size delta against aggregate average
         course_size_delta = compute_metrics.get_course_size_delta(self.csv_row, self.agg_data)
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CourseSizeDelta'), str(course_size_delta)]))
+        container.append(Command(cmd, [NoEscape(r'\CourseSizeDelta'), str(course_size_delta)]))
 
         responses = f"{self.pdf_json['eval_info']['response_count']}"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\Responses'), str(responses)]))
+        container.append(Command(cmd, [NoEscape(r'\Responses'), str(responses)]))
 
         # May need to add '\\' to escape for the percent
         response_rate = f"{self.pdf_json['eval_info']['response_rate']}"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\ResponseRate'), response_rate]))
+        container.append(Command(cmd, [NoEscape(r'\ResponseRate'), response_rate]))
 
         # Calculate response rate delta (currently returns N/A until aggregate tracking is added)
         response_delta = compute_metrics.get_response_rate_delta(self.pdf_json, self.agg_data)
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\ResponseDelta'), response_delta]))
+        container.append(Command(cmd, [NoEscape(r'\ResponseDelta'), response_delta]))
 
         avg_p1 = f"{self.pdf_json['eval_info']['avg1']}"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\AvgPone'), str(avg_p1)]))
+        container.append(Command(cmd, [NoEscape(r'\AvgPone'), str(avg_p1)]))
 
         # Calculate avg1 delta against aggregate baseline
         avg_p1_delta = compute_metrics.get_avg_part1_delta(self.pdf_json, self.agg_data)
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\AvgPoneDelta'), avg_p1_delta]))
+        container.append(Command(cmd, [NoEscape(r'\AvgPoneDelta'), avg_p1_delta]))
 
         avg_p2 = f"{self.pdf_json['eval_info']['avg2']}"
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\AvgPtwo'), str(avg_p2)]))
+        container.append(Command(cmd, [NoEscape(r'\AvgPtwo'), str(avg_p2)]))
 
         # Calculate avg2 delta against aggregate baseline
         avg_p2_delta = compute_metrics.get_avg_part2_delta(self.pdf_json, self.agg_data)
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\AvgPtwoDelta'), avg_p2_delta]))
+        container.append(Command(cmd, [NoEscape(r'\AvgPtwoDelta'), avg_p2_delta]))
 
         # Median grade from aggregate data (baseline)
         median_grade = self.agg_data['median_grade']
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\MedianGrade'), median_grade]))
+        container.append(Command(cmd, [NoEscape(r'\MedianGrade'), median_grade]))
 
         # Median grade for course row
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\MedianGradeDelta'), self.metrics['median_grade']['individual']]))
+        container.append(Command(cmd, [NoEscape(r'\MedianGradeDelta'), self.metrics['median_grade']['individual']]))
 
         # GPA and delta calculation using metrics dict
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GPA'), str(self.metrics['gpa']['value'])]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GPADelta'), self.metrics['gpa']['delta']]))
+        container.append(Command(cmd, [NoEscape(r'\GPA'), str(self.metrics['gpa']['value'])]))
+        container.append(Command(cmd, [NoEscape(r'\GPADelta'), self.metrics['gpa']['delta']]))
 
         # Pass metrics
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\PassNum'), str(self.metrics['pass']['count'])]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\PassPct'), self.metrics['pass']['pct']]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\PassDelta'), self.metrics['pass']['delta']]))
+        container.append(Command(cmd, [NoEscape(r'\PassNum'), str(self.metrics['pass']['count'])]))
+        container.append(Command(cmd, [NoEscape(r'\PassPct'), self.metrics['pass']['pct']]))
+        container.append(Command(cmd, [NoEscape(r'\PassDelta'), self.metrics['pass']['delta']]))
 
         # Fail metrics
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\FailNum'), str(self.metrics['fail']['count'])]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\FailPct'), self.metrics['fail']['pct']]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\FailDelta'), self.metrics['fail']['delta']]))
+        container.append(Command(cmd, [NoEscape(r'\FailNum'), str(self.metrics['fail']['count'])]))
+        container.append(Command(cmd, [NoEscape(r'\FailPct'), self.metrics['fail']['pct']]))
+        container.append(Command(cmd, [NoEscape(r'\FailDelta'), self.metrics['fail']['delta']]))
 
         # Drop metrics
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\DropNum'), str(self.metrics['drop']['count'])]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\DropPct'), self.metrics['drop']['pct']]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\DropDelta'), self.metrics['drop']['delta']]))
+        container.append(Command(cmd, [NoEscape(r'\DropNum'), str(self.metrics['drop']['count'])]))
+        container.append(Command(cmd, [NoEscape(r'\DropPct'), self.metrics['drop']['pct']]))
+        container.append(Command(cmd, [NoEscape(r'\DropDelta'), self.metrics['drop']['delta']]))
 
         # Withdraw metrics
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\WithdrawNum'), str(self.metrics['withdraw']['count'])]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\WithdrawPct'), self.metrics['withdraw']['pct']]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\WithdrawDelta'), self.metrics['withdraw']['delta']]))
+        container.append(Command(cmd, [NoEscape(r'\WithdrawNum'), str(self.metrics['withdraw']['count'])]))
+        container.append(Command(cmd, [NoEscape(r'\WithdrawPct'), self.metrics['withdraw']['pct']]))
+        container.append(Command(cmd, [NoEscape(r'\WithdrawDelta'), self.metrics['withdraw']['delta']]))
 
     # Assigning values to the fields in the evaluation metrics section
     def _add_evaluation_metrics_fields(self):
         """
         Build LaTeX commands for the 5 lowest scoring evaluation metrics across part_1 and part_2
         """
+
+        cmd = self._latex_command_name()
+        container = self._course_cmd_container()
 
         part_1 = self.pdf_json.get("part_1", {})
         part_2 = self.pdf_json.get("part_2", {})
@@ -319,27 +349,29 @@ class _ScorecardDoc:
 
             metric_name = metric_descriptions.get(metric_key, metric_key)
 
-            self.doc.preamble.append(
-                Command("newcommand", [NoEscape(f"\\Out{word}Name"), metric_name])
+            container.append(
+                Command(cmd, [NoEscape(f"\\Out{word}Name"), metric_name])
             )
 
-            self.doc.preamble.append(
-                Command("newcommand", [NoEscape(f"\\Out{word}Score"), str(score_str)])
+            container.append(
+                Command(cmd, [NoEscape(f"\\Out{word}Score"), str(score_str)])
             )
     
     # Assigning values used in LLM comment summary section
     def _add_summary_fields(self):
 
+        cmd = self._latex_command_name()
+        container = self._course_cmd_container()
+
         # TODO: Modify pdf_json schema to also have a count value for the comments maybe
-        #   or organized txt file, json might be easier
         comment_count = 4
-        self.doc.preamble.append(
-            Command('newcommand', [NoEscape(r'\CommentCount'), str(comment_count)])
+        container.append(
+            Command(cmd, [NoEscape(r'\CommentCount'), str(comment_count)])
         )
 
         llm_summary = self.pdf_json['llm_summary']  
-        self.doc.preamble.append(
-            Command('newcommand', [NoEscape(r'\LLMSummary'), NoEscape(llm_summary)])
+        container.append(
+            Command(cmd, [NoEscape(r'\LLMSummary'), NoEscape(llm_summary)])
         )
 
     
@@ -349,47 +381,50 @@ class _ScorecardDoc:
         Populate grade distribution metrics from self.metrics dict.
         """
 
+        cmd = self._latex_command_name()
+        container = self._course_cmd_container()
+
         # Grade A (A+, A, A-)
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeACount'), str(self.metrics['grades']['A']['count'])]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeAPct'), self.metrics['grades']['A']['pct']]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeADelta'), self.metrics['grades']['A']['delta']]))
+        container.append(Command(cmd, [NoEscape(r'\GradeACount'), str(self.metrics['grades']['A']['count'])]))
+        container.append(Command(cmd, [NoEscape(r'\GradeAPct'), self.metrics['grades']['A']['pct']]))
+        container.append(Command(cmd, [NoEscape(r'\GradeADelta'), self.metrics['grades']['A']['delta']]))
 
         # Grade B (B+, B, B-)
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBCount'), str(self.metrics['grades']['B']['count'])]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBPct'), self.metrics['grades']['B']['pct']]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeBDelta'), self.metrics['grades']['B']['delta']]))
+        container.append(Command(cmd, [NoEscape(r'\GradeBCount'), str(self.metrics['grades']['B']['count'])]))
+        container.append(Command(cmd, [NoEscape(r'\GradeBPct'), self.metrics['grades']['B']['pct']]))
+        container.append(Command(cmd, [NoEscape(r'\GradeBDelta'), self.metrics['grades']['B']['delta']]))
 
         # Grade C (C+, C)
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCCount'), str(self.metrics['grades']['C']['count'])]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCPct'), self.metrics['grades']['C']['pct']]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeCDelta'), self.metrics['grades']['C']['delta']]))
+        container.append(Command(cmd, [NoEscape(r'\GradeCCount'), str(self.metrics['grades']['C']['count'])]))
+        container.append(Command(cmd, [NoEscape(r'\GradeCPct'), self.metrics['grades']['C']['pct']]))
+        container.append(Command(cmd, [NoEscape(r'\GradeCDelta'), self.metrics['grades']['C']['delta']]))
 
         # Grade D
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDCount'), str(self.metrics['grades']['D']['count'])]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDPct'), self.metrics['grades']['D']['pct']]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeDDelta'), self.metrics['grades']['D']['delta']]))
+        container.append(Command(cmd, [NoEscape(r'\GradeDCount'), str(self.metrics['grades']['D']['count'])]))
+        container.append(Command(cmd, [NoEscape(r'\GradeDPct'), self.metrics['grades']['D']['pct']]))
+        container.append(Command(cmd, [NoEscape(r'\GradeDDelta'), self.metrics['grades']['D']['delta']]))
 
         # Grade E
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeECount'), str(self.metrics['grades']['E']['count'])]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeEPct'), self.metrics['grades']['E']['pct']]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\GradeEDelta'), self.metrics['grades']['E']['delta']]))
+        container.append(Command(cmd, [NoEscape(r'\GradeECount'), str(self.metrics['grades']['E']['count'])]))
+        container.append(Command(cmd, [NoEscape(r'\GradeEPct'), self.metrics['grades']['E']['pct']]))
+        container.append(Command(cmd, [NoEscape(r'\GradeEDelta'), self.metrics['grades']['E']['delta']]))
 
         # Quartile grades from metrics
         q1 = str(self.metrics['quartiles']['q1']) if self.metrics['quartiles']['q1'] else 'N/A'
         q2 = str(self.metrics['quartiles']['q2']) if self.metrics['quartiles']['q2'] else 'N/A'
         q3 = str(self.metrics['quartiles']['q3']) if self.metrics['quartiles']['q3'] else 'N/A'
 
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\Qone'), q1]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\Qtwo'), q2]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\Qthree'), q3]))
+        container.append(Command(cmd, [NoEscape(r'\Qone'), q1]))
+        container.append(Command(cmd, [NoEscape(r'\Qtwo'), q2]))
+        container.append(Command(cmd, [NoEscape(r'\Qthree'), q3]))
 
         # TODO: Calculate quartile deltas if we have historical quartile data
         q1_delta = str(0)
         q2_delta = str(0)
         q3_delta = str(0)
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\QoneDelta'), q1_delta]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\QtwoDelta'), q2_delta]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\QthreeDelta'), q3_delta]))
+        container.append(Command(cmd, [NoEscape(r'\QoneDelta'), q1_delta]))
+        container.append(Command(cmd, [NoEscape(r'\QtwoDelta'), q2_delta]))
+        container.append(Command(cmd, [NoEscape(r'\QthreeDelta'), q3_delta]))
 
     def _define_helper_commands(self):
         # Retrieve helper commands
@@ -437,13 +472,20 @@ class _ScorecardDoc:
         4. Comment Summary section
         5. Grade Distribution section
         """
-        self._add_page_title()
-        self._add_overview_section()
-        self._add_evaluation_section()
-        if (_is_true(self.config["scorecard_gen_settings"]["include_LLM_insights"])):
-            self._add_comment_section()
-        self._add_grade_distribution_section()
+        if self.short:
+            self.add_short_section()
+        else: 
+            self._add_page_title()
+            self._add_overview_section()
+            self._add_evaluation_section()
+            if (_is_true(self.config["scorecard_gen_settings"]["include_LLM_insights"])):
+                self._add_comment_section()
+            self._add_grade_distribution_section()
     
+    def add_short_section(self):
+        """Add the short coursecard"""
+        self.doc.append(NoEscape(latex_sections.get_short_course_card()))
+
     def _add_page_title(self):
         """Add the page-level title"""
         self.doc.append(NoEscape(latex_sections.get_page_title_template()))
@@ -484,6 +526,8 @@ def assemble_scorecard(
         course: Mapping[str, Any],
         config,
         csv_path,
+        short:bool = False,
+        newcommand:bool = True
     ):
     """
     Generates the .tex for the scorecard & saves it as a pdf.
@@ -528,6 +572,8 @@ def assemble_scorecard(
         output_filename=histrogram_name,
         agg_data=agg_data,
         config=config,
+        short=short,
+        newcommand=newcommand,
         )
     
     latex_doc.doc_setup()
@@ -549,29 +595,93 @@ def assemble_instructor_scorecard(
     csv_path,
 ):
     """
-    Basic implementation that finds courses by instructor and saves to DataFrame.
-    This is the equivalent of assemble_scorecard but for professors.
+    Build a single LaTeX file for an instructor, containing one short
+    course card per course. 
     """
-    print(f"  Starting instructor scorecard for: {instructor.get('Instructor', 'N/A')}")
+
+    paths = config['paths']
+    histogram_dir = paths['grade_histogram_dir']
+    tex_output_path = paths['tex_dir']
 
     # Get all courses for this instructor
-    instructor_courses = get_courses_by_instructor(instructor, csv_path)
+    instructor_courses = get_courses_by_instructor(instructor, csv_path, True)
 
     if instructor_courses.empty:
-        print(f" No courses found for instructor: {instructor.get('Instructor', 'N/A')}")
-        return None
+        print("No courses found for instructor; nothing to generate.")
+        return
 
-    # Print summary of what was found
-    print(f"  ✅ Instructor {instructor.get('Instructor', 'N/A')} teaches {len(instructor_courses)} courses:")
-    for _, course in instructor_courses.head(5).iterrows():  # Show first 5 as sample
-        subject = course.get('Subject', 'UNKN')
-        catalog = course.get('Catalog Nbr', '000')
-        class_nbr = course.get('Class Nbr', '')
-        print(f"    - {subject} {catalog} (Class {class_nbr})")
+    master_doc: Optional[Document] = None
+    is_first = True
 
-    if len(instructor_courses) > 5:
-        print(f"    ... and {len(instructor_courses) - 5} more courses")
+    for _, course in instructor_courses.iterrows():
+        # aggregate data for this specific course
+        agg_data = aggregate_for_row(
+            comparison=config['comparison'],
+            row=course,
+            json_dir=paths['parsed_pdf_dir'],
+            csv_path=csv_path,
+        )
 
-    # TODO: Add LaTeX generation for instructor scorecard here
-    # For now, just return the DataFrame as requested
-    return instructor_courses
+        histrogram_name = course_to_stem(course)
+        histogram_full_path = os.path.join(histogram_dir, f"{histrogram_name}.png")
+
+        pdf_json = load_pdf_json(course_to_json_path(course))
+
+        scorecard = _ScorecardDoc(
+            csv_row=course,
+            pdf_json=pdf_json,
+            grade_hist=histogram_full_path,
+            output_filename="placeholder",  # not used here for per-course files
+            agg_data=agg_data,
+            config=config,
+            short=True,
+            newcommand=is_first,
+        )
+
+        if is_first:
+            master_doc = Document(documentclass='article', document_options=['11pt'])
+            scorecard.doc = master_doc
+
+            scorecard._add_packages()
+            scorecard._add_preamble()
+
+            master_doc.append(NoEscape(r'{\LARGE\bfseries\textcolor{accent}{\Instructor} \\}'))
+
+            scorecard.add_short_section()
+
+            is_first = False
+        else:
+            if master_doc is None:
+                raise RuntimeError("master_doc was not initialized for instructor scorecard")
+
+            scorecard.doc = master_doc
+
+            scorecard.write_course_cmds_to_preamble = False
+            scorecard.newcommand = False  
+
+            scorecard._add_overview_fields()
+            scorecard._add_evaluation_metrics_fields()
+            scorecard._add_summary_fields()
+            scorecard._add_grade_distr_fields()
+
+            scorecard.add_short_section()
+
+    if master_doc is None:
+        print("Unexpected error: master_doc was not created.")
+        return
+
+    first_course = instructor_courses.iloc[0]
+    gpa_graph_dir = paths['instructor_course_gpa_graph_dir']
+    gpa_graph_name = instructor_to_stem(first_course)
+    gpa_graph_full_path = os.path.join(gpa_graph_dir, f"{gpa_graph_name}.png")
+
+    master_doc.append(NoEscape(
+        rf'\includegraphics[width=\textwidth,height=1\textheight,keepaspectratio]{{{gpa_graph_full_path}}}'
+    ))
+    master_doc.append(Command('newpage'))
+
+    output_filename = f"{instructor.get('Instructor')}_Overview"
+    full_output_path = os.path.join(tex_output_path, output_filename)
+    master_doc.generate_tex(full_output_path)
+
+    print(f"  ✅ Saved instructor LaTeX to {full_output_path}")
