@@ -103,3 +103,34 @@ def get_user_config_path() -> Path:
     else:
         # Development mode: use bundled config directly
         return None
+
+
+def get_writable_config_path() -> Path:
+    """
+    Get the path to the writable config.json file.
+
+    This function returns the appropriate config.json path for both frozen
+    (PyInstaller) and development environments:
+    - Frozen mode: Returns config in dist/Scorecard_Generator/configuration/
+    - Development mode: Returns config in project root configuration/
+
+    The returned path is always writable and suitable for storing user settings
+    like custom model paths.
+
+    Returns:
+        Path to writable config.json file
+
+    Example:
+        >>> config_path = get_writable_config_path()
+        >>> with open(config_path, 'r') as f:
+        >>>     config = json.load(f)
+        >>> config['paths']['gguf_path'] = '/path/to/model.gguf'
+        >>> with open(config_path, 'w') as f:
+        >>>     json.dump(config, f, indent=4)
+    """
+    config_path = get_project_root() / 'configuration' / 'config.json'
+
+    # Ensure the configuration directory exists
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    return config_path
