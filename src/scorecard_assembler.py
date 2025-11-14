@@ -136,9 +136,11 @@ class _ScorecardDoc:
             'definecolor',
             arguments=['accent', 'HTML', '1F4E79']
         ))
-        self.doc.preamble.append(NoEscape(r'\colorlet{pos}{green!60!black}'))
-        self.doc.preamble.append(NoEscape(r'\colorlet{neg}{red!70!black}'))
-        self.doc.preamble.append(NoEscape(r'\colorlet{neu}{gray!70!black}'))
+        # These are set to black currently until we want to add colors to deltas back. 
+        # This needs to be dynamic since + doesn't always mean "good", and such
+        self.doc.preamble.append(NoEscape(r'\colorlet{pos}{black!60!black}')) 
+        self.doc.preamble.append(NoEscape(r'\colorlet{neg}{black!70!black}'))
+        self.doc.preamble.append(NoEscape(r'\colorlet{neu}{black!70!black}'))
 
         # Overview field commands
         self._add_overview_fields()
