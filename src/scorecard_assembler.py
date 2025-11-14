@@ -14,7 +14,7 @@ from pylatex import(
     Section,
 )
 from src import latex_sections
-from src.data_handler import aggregate_for_row
+from src.data_handler import aggregate_for_row, get_courses_by_instructor
 from src import compute_metrics
 
 # Organizing all the data necessary for automating the latex, much cleaner containing
@@ -473,5 +473,35 @@ def assemble_scorecard(
     #latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
    # print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
 
+def assemble_instructor_scorecard(
+    instructor: Mapping[str, Any],
+    config,
+    csv_path,
+):
+    """
+    Basic implementation that finds courses by instructor and saves to DataFrame.
+    This is the equivalent of assemble_scorecard but for professors.
+    """
+    print(f" Starting instructor scorecard for: {instructor.get('Instructor', 'N/A')}")
 
+    # Get all courses for this instructor
+    instructor_courses = data_handler.get_courses_by_instructor(instructor, csv_path)
 
+    if instructor_courses.empty:
+        print(f" No courses found for instructor: {instructor.get('Instructor', 'N/A')}")
+        return None
+
+    # Print summary of what was found
+    print(f"✅ Instructor {instructor.get('Instructor', 'N/A')} teaches {len(instructor_courses)} courses:")
+    for _, course in instructor_courses.head(5).iterrows():  # Show first 5 as sample
+        subject = course.get('Subject', 'UNKN')
+        catalog = course.get('Catalog Nbr', '000')
+        class_nbr = course.get('Class Nbr', '')
+        print(f"   - {subject} {catalog} (Class {class_nbr})")
+
+    if len(instructor_courses) > 5:
+        print(f"   ... and {len(instructor_courses) - 5} more courses")
+
+    # TODO: Add LaTeX generation for instructor scorecard here
+    # For now, just return the DataFrame as requested
+    return instructor_courses
