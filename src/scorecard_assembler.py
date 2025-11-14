@@ -4,7 +4,7 @@ import re
 import sys
 import pandas as pd
 from typing import Any, Dict, Mapping, Optional, List, Tuple
-from src.utils import course_to_json_path, course_to_stem
+from src.utils import course_to_json_path, course_to_stem, _is_true
 
 from pylatex import(
     Command,
@@ -21,12 +21,21 @@ from src import compute_metrics
 #   everything in one class.
 class _ScorecardDoc:
 
-    def __init__(self, csv_row: Dict[str, Any], pdf_json: str, grade_hist: str, output_filename: str, agg_data: Dict[str, Any]):
+    def __init__(
+            self, 
+            csv_row: Dict[str, Any], 
+            pdf_json: str, 
+            grade_hist: str, 
+            output_filename: str, 
+            agg_data: Dict[str, Any],
+            config
+            ):
         self.csv_row = csv_row
         self.pdf_json = pdf_json
         self.grade_hist = grade_hist
         self.output_filename = output_filename
         self.agg_data = agg_data
+        self.config = config
 
         # Tex related fields
         self.doc = None
@@ -382,7 +391,8 @@ class _ScorecardDoc:
         self._add_page_title()
         self._add_overview_section()
         self._add_evaluation_section()
-        self._add_comment_section()
+        if (_is_true(self.config["scorecard_gen_settings"]["include_LLM_insights"])):
+            self._add_comment_section()
         self._add_grade_distribution_section()
     
     def _add_page_title(self):
@@ -462,7 +472,8 @@ def assemble_scorecard(
         pdf_json=pdf_json,
         grade_hist=histogram_full_path,
         output_filename=histrogram_name,
-        agg_data=agg_data
+        agg_data=agg_data,
+        config=config,
         )
     
     latex_doc.doc_setup()
