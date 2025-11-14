@@ -446,7 +446,12 @@ def assemble_scorecard(
 
     # Source the grade histogram from the json path (similar naming structure)
     histrogram_name = course_to_stem(course)
-    histogram_full_path = (os.path.abspath(os.path.join(histogram_dir, f"{histrogram_name}.png")))
+    histogram_full_path = os.path.abspath(os.path.join(histogram_dir, f"{histrogram_name}.png"))
+
+    # Convert backslashes to forward slashes for LaTeX compatibility on Windows
+    # LaTeX treats backslashes as escape characters, so we need to use forward slashes
+    if isinstance(histogram_full_path, str):
+        histogram_full_path = histogram_full_path.replace('\\', '/')
 
     # Load the pdf json representation
     pdf_json = load_pdf_json(course_to_json_path(course))
