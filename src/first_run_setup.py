@@ -271,18 +271,63 @@ class FirstRunSetup:
 
             # Install required packages using tlmgr
             log("📦 Installing required LaTeX packages...")
-            tlmgr_path = self.get_latex_binary_path()
-            if tlmgr_path:
-                tlmgr_dir = Path(tlmgr_path).parent
-                tlmgr_bin = tlmgr_dir / ('tlmgr.bat' if system == "Windows" else 'tlmgr')
+
+            # Look for tlmgr in the TinyTeX installation we just created
+            # Don't use get_latex_binary_path() as it may find system LaTeX
+            bin_dir = self.tinytex_dir / 'bin'
+            tlmgr_dir = None
+
+            # Check if bin directory exists before trying to iterate
+            if not bin_dir.exists():
+                log("  ⚠️  Warning: TinyTeX bin directory not found")
+                log("  LaTeX packages will not be installed automatically")
+                log("✅ LaTeX packages installation complete")
+                return True
+
+            # Find the platform-specific bin directory
+            for subdir in bin_dir.iterdir():
+                if subdir.is_dir():
+                    # Check if this directory contains pdflatex
+                    pdflatex_name = 'pdflatex.exe' if system == "Windows" else 'pdflatex'
+                    if (subdir / pdflatex_name).exists():
+                        tlmgr_dir = subdir
+                        log(f"  Found TinyTeX binaries in: {tlmgr_dir}")
+                        break
+
+            if tlmgr_dir:
+                # On Windows, tlmgr doesn't have a .bat extension in TinyTeX
+                if system == "Windows":
+                    # Try tlmgr.bat first (some distributions), then tlmgr
+                    tlmgr_bin = tlmgr_dir / 'tlmgr.bat'
+                    if not tlmgr_bin.exists():
+                        tlmgr_bin = tlmgr_dir / 'tlmgr'
+                else:
+                    tlmgr_bin = tlmgr_dir / 'tlmgr'
 
                 if tlmgr_bin.exists():
                     # Initialize tlmgr first (required for TinyTeX)
                     log("  Initializing TinyTeX package manager...")
+
+                    # On Windows, we may need to use perl directly to run tlmgr
+                    if system == "Windows" and not str(tlmgr_bin).endswith('.bat'):
+                        # Find perl in the same bin directory
+                        perl_bin = tlmgr_dir / 'perl.exe'
+                        if perl_bin.exists():
+                            # Run tlmgr via perl
+                            tlmgr_cmd = [str(perl_bin), str(tlmgr_bin)]
+                            log(f"  Using perl to run tlmgr: {perl_bin}")
+                        else:
+                            # Fallback to running tlmgr directly
+                            tlmgr_cmd = [str(tlmgr_bin)]
+                            log(f"  Running tlmgr directly: {tlmgr_bin}")
+                    else:
+                        tlmgr_cmd = [str(tlmgr_bin)]
+                        log(f"  Using tlmgr: {tlmgr_bin}")
+
                     try:
                         # Update tlmgr itself
                         result = subprocess.run(
-                            [str(tlmgr_bin), 'update', '--self'],
+                            tlmgr_cmd + ['update', '--self'],
                             capture_output=True,
                             timeout=180,
                             text=True
@@ -296,7 +341,7 @@ class FirstRunSetup:
                     try:
                         log("  Updating package database...")
                         result = subprocess.run(
-                            [str(tlmgr_bin), 'update', '--all'],
+                            tlmgr_cmd + ['update', '--all'],
                             capture_output=True,
                             timeout=180,
                             text=True
@@ -330,7 +375,7 @@ class FirstRunSetup:
                         log(f"  Installing {package}...")
                         try:
                             result = subprocess.run(
-                                [str(tlmgr_bin), 'install', package],
+                                tlmgr_cmd + ['install', package],
                                 capture_output=True,
                                 timeout=120,
                                 text=True
@@ -347,6 +392,12 @@ class FirstRunSetup:
                             log(f"    ⚠️  {package} installation timed out")
                         except Exception as e:
                             log(f"    ⚠️  Could not install {package}: {e}")
+                else:
+                    log(f"  ⚠️  Warning: tlmgr not found at {tlmgr_bin}")
+                    log(f"  Searched in: {tlmgr_dir}")
+            else:
+                log("  ⚠️  Warning: Could not locate pdflatex binary")
+                log("  LaTeX packages will not be installed automatically")
 
             log("✅ LaTeX packages installation complete")
             return True
