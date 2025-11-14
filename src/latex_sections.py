@@ -74,16 +74,8 @@ def get_comment_section_template():
     """Returns the LaTeX template for the Comment Summary section"""
     return r'''
 \begin{tcolorbox}
-	{\Large\bfseries\textcolor{accent}{Comment Summary}}
+	{\Large\bfseries\textcolor{accent}{Comment Summary (AI Generated)}}
 
-	\vspace{2pt}
-	\renewcommand{\arraystretch}{1.2}
-	\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
-		\MetricLeft{Responses Count}{\Responses}{} & \autoD{\ResponseDelta}\\
-	\end{tabularx}
-
-	\vspace{2pt}
-    \textbf{(AI Generated)}
 	\noindent \LLMSummary
 \end{tcolorbox}
 '''
