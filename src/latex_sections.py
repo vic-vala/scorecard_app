@@ -22,6 +22,7 @@ def get_overview_section_template():
 \begin{tcolorbox}
 	{\Large\bfseries\textcolor{accent}{Overview}}
 	\ifShowHdrOverview\hfill\textbf{\CourseHeader}\fi
+    \vspace{4pt}
 
 	\renewcommand{\arraystretch}{1.25}
 	\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
@@ -33,7 +34,6 @@ def get_overview_section_template():
 		\MetricLeft{Avg Part 1}{\AvgPone}{} & \autoD{\AvgPoneDelta}\\
 		\MetricLeft{Avg Part 2}{\AvgPtwo}{} & \autoD{\AvgPtwoDelta}\\
 		\MetricLeft{Median Grade}{\MedianGrade}{} & \autoD{\MedianGradeDelta}\\
-		\MetricLeft{GPA}{\GPA}{} & \autoD{\GPADelta}\\
 	\end{tabular}
 	&
  	% -------- Right column --------
@@ -42,6 +42,7 @@ def get_overview_section_template():
 		\MetricLeft{Fail}{\FailNum}{\FailPct} & \autoD{\FailDelta}\\
 		\MetricLeft{Drop}{\DropNum}{\DropPct} & \autoD{\DropDelta}\\
 		\MetricLeft{Withdraw}{\WithdrawNum}{\WithdrawPct} & \autoD{\WithdrawDelta}\\
+        \MetricLeft{GPA}{\GPA}{} & \autoD{\GPADelta}\\
 	\end{tabular}
 
 	\end{tabularx}
