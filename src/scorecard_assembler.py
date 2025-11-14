@@ -275,10 +275,15 @@ class _ScorecardDoc:
         # TODO: Modify pdf_json schema to also have a count value for the comments maybe
         #   or organized txt file, json might be easier
         comment_count = 4
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\CommentCount'), str(comment_count)]))
+        self.doc.preamble.append(
+            Command('newcommand', [NoEscape(r'\CommentCount'), str(comment_count)])
+        )
 
-        llm_summary = self.pdf_json['llm_summary']
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\LLMSummary'), llm_summary]))
+        llm_summary = self.pdf_json['llm_summary']  
+        self.doc.preamble.append(
+            Command('newcommand', [NoEscape(r'\LLMSummary'), NoEscape(llm_summary)])
+        )
+
     
     # Assigning values used in grade distribution section
     def _add_grade_distr_fields(self):
