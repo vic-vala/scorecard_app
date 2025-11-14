@@ -30,7 +30,7 @@ def get_overview_section_template():
  	% -------- Left column --------
 	\begin{tabular}{@{}l >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
 		\MetricLeft{Course Size}{\CourseSize}{} & \autoD{\CourseSizeDelta}\\
-		\MetricLeft{Responses}{\Responses}{\ResponseRate} & \autoD{\ResponseDelta}\\
+		\MetricLeft{Responses}{\Responses}{\ResponseRate} \\
 		\MetricLeft{Avg Part 1}{\AvgPone}{} & \autoD{\AvgPoneDelta}\\
 		\MetricLeft{Avg Part 2}{\AvgPtwo}{} & \autoD{\AvgPtwoDelta}\\
 		\MetricLeft{Median Grade}{\MedianGrade}{} & \autoD{\MedianGradeDelta}\\
