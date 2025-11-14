@@ -594,6 +594,10 @@ def assemble_instructor_scorecard(
     course card per course. 
     """
 
+    paths = config['paths']
+    histogram_dir = paths['grade_histogram_dir']
+    tex_output_path = paths['tex_dir']
+
     # Get all courses for this instructor
     instructor_courses = get_courses_by_instructor(instructor, csv_path, True)
 
@@ -601,11 +605,7 @@ def assemble_instructor_scorecard(
         print("No courses found for instructor; nothing to generate.")
         return
 
-    paths = config['paths']
-    histogram_dir = paths['grade_histogram_dir']
-    tex_output_path = paths['tex_dir']
-
-    master_doc = None
+    master_doc: Optional[Document] = None
     is_first = True
 
     for _, course in instructor_courses.iterrows():
@@ -640,10 +640,15 @@ def assemble_instructor_scorecard(
             scorecard._add_packages()
             scorecard._add_preamble()
 
+            master_doc.append(NoEscape(r'{\LARGE\bfseries\textcolor{accent}{\Instructor} \\}'))
+
             scorecard.add_short_section()
 
             is_first = False
         else:
+            if master_doc is None:
+                raise RuntimeError("master_doc was not initialized for instructor scorecard")
+
             scorecard.doc = master_doc
 
             scorecard.write_course_cmds_to_preamble = False
@@ -656,10 +661,19 @@ def assemble_instructor_scorecard(
 
             scorecard.add_short_section()
 
-    # if something went wrong and no doc was created
     if master_doc is None:
         print("Unexpected error: master_doc was not created.")
         return
+
+    first_course = instructor_courses.iloc[0]
+    gpa_graph_dir = paths['instructor_course_gpa_graph_dir']
+    gpa_graph_name = instructor_to_stem(first_course)
+    gpa_graph_full_path = os.path.join(gpa_graph_dir, f"{gpa_graph_name}.png")
+
+    master_doc.append(NoEscape(
+        rf'\includegraphics[width=\textwidth,height=1\textheight,keepaspectratio]{{{gpa_graph_full_path}}}'
+    ))
+    master_doc.append(Command('newpage'))
 
     output_filename = f"{instructor.get('Instructor')}_Overview"
     full_output_path = os.path.join(tex_output_path, output_filename)
