@@ -22,7 +22,7 @@ def get_overview_section_template():
 \begin{tcolorbox}
 	{\Large\bfseries\textcolor{accent}{Overview}}
 	\ifShowHdrOverview\hfill\textbf{\CourseHeader}\fi
-    \vspace{4pt}
+    \vspace{2pt}
 
 	\renewcommand{\arraystretch}{1.25}
 	\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
@@ -54,18 +54,17 @@ def get_evaluation_section_template():
     """Returns the LaTeX template for the Evaluation Metrics section"""
     return r'''
 \begin{tcolorbox}
-	{\Large\bfseries\textcolor{accent}{Evaluation Metrics}}
+	{\Large\bfseries\textcolor{accent}{Lowest Evaluation Metrics}}
 	\ifShowHdrEval\hfill\textbf{\CourseHeader}\fi
-
-	\vspace{2pt}
-	\textbf{Outliers:}
 
 	\vspace{2pt}
 	\renewcommand{\arraystretch}{1.2}
 	\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
-		\MetricLeft{\OutOneName}{\OutOneScore/5}{} & \autoD{\OutOneDelta}\\
-		\MetricLeft{\OutTwoName}{\OutTwoScore/5}{} & \autoD{\OutTwoDelta}\\
-		\MetricLeft{\OutThreeName}{\OutThreeScore/5}{} & \autoD{\OutThreeDelta}\\
+		\MetricLeft{\OutOneName} {\OutOneScore/5}{} \\
+		\MetricLeft{\OutTwoName} {\OutTwoScore/5}{} \\
+		\MetricLeft{\OutThreeName} {\OutThreeScore/5}{} \\
+        \MetricLeft{\OutFourName} {\OutFourScore/5}{} \\
+        \MetricLeft{\OutFiveName} {\OutFiveScore/5}{} \\
 	\end{tabularx}
 \end{tcolorbox}
 '''

@@ -252,33 +252,80 @@ class _ScorecardDoc:
 
     # Assigning values to the fields in the evaluation metrics section
     def _add_evaluation_metrics_fields(self):
-        # TODO: have some function that dynamically chooses the outliers based on a 
-        #   deviation threshold? Hardcoded choices for now, but dynamic values
-        #   Could use a dict for the full metric descriptions
-        outlier_avg = 4.5   # obsolete, will remove
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutlierAvg'), str(outlier_avg)]))   # obsolete
+        """
+        Build LaTeX commands for the 5 lowest scoring evaluation metrics across part_1 and part_2
+        """
 
-        outlier1_name = f"Textbook/supplementary material in support of the course."
-        outlier1_val = self.pdf_json['part_1']['textbook_avg']
-        outlier1_delta = -0.43
+        part_1 = self.pdf_json.get("part_1", {})
+        part_2 = self.pdf_json.get("part_2", {})
 
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutOneName'), outlier1_name]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutOneScore'), str(outlier1_val)]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutOneDelta'), str(outlier1_delta)]))
-        
-        outlier2_name = f"Value of assigned homework in support of course topics."
-        outlier2_val = self.pdf_json['part_1']['homework_value_avg']
-        outlier2_delta = -0.24
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutTwoName'), outlier2_name]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutTwoScore'), str(outlier2_val)]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutTwoDelta'), str(outlier2_delta)]))
-        
-        outlier3_name = f"Value of laboratory assignments/projects in support of the course topics."
-        outlier3_val = self.pdf_json['part_1']['lab_value_avg']
-        outlier3_delta = 0.17
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutThreeName'), outlier3_name]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutThreeScore'), str(outlier3_val)]))
-        self.doc.preamble.append(Command('newcommand', [NoEscape(r'\OutThreeDelta'), str(outlier3_delta)]))
+        metric_descriptions = {
+            # part_1
+            "textbook_avg": "Textbook supplementary material in support of the course",
+            "homework_value_avg": "Value of assigned homework in support of course topics",
+            "lab_value_avg": "Value of laboratory assignments projects in support of the course topics",
+            "exam_reason_avg": "Reasonableness of exams and quizzes in covering course material",
+            "lab_weight_avg": "Weight given to labs or projects relative to exams and quizzes",
+            "homework_weight_avg": "Weight given to homework assignments relative to exams and quizzes",
+            "grade_crit_avg": "Definition and application of criteria for grading",
+
+            # part_2
+            "instr_prep_avg": "The instructor was well prepared",
+            "instr_comm_idea_avg": "The instructor communicated ideas clearly",
+            "availability_avg": "The instructor or assistants were available for outside assistance",
+            "enthus_avg": "The instructor exhibited enthusiasm for and interest in the subject",
+            "instr_approach_avg": "The instructors approach stimulated student thinking",
+            "course_mat_application_avg": "The instructor related course material to its applications",
+            "present_methods_avg": "The instructors methods of presentation supported student learning",
+            "fair_grading_avg": "The instructors grading was fair impartial and adequate",
+            "timely_grading_avg": "The instructor returned graded materials within a reasonable period",
+        }
+
+        # collect all numeric metrics as (metric_key, score_float, score_original_str)
+        all_metrics = []
+
+        for key, val in part_1.items():
+            try:
+                score_float = float(val)
+            except (TypeError, ValueError):
+                continue
+            all_metrics.append((key, score_float, val))
+
+        for key, val in part_2.items():
+            try:
+                score_float = float(val)
+            except (TypeError, ValueError):
+                continue
+            all_metrics.append((key, score_float, val))
+
+        # sort by score (ascending: lowest scores first)
+        all_metrics.sort(key=lambda item: item[1])
+
+        # mapping from rank to word for latex command names
+        # \OutOneName, \OutTwoName, ..., \OutFiveScore
+        index_to_word = {
+            1: "One",
+            2: "Two",
+            3: "Three",
+            4: "Four",
+            5: "Five",
+        }
+
+        # take the 5 lowest scores and create latex commands for each
+        for idx, (metric_key, _score_float, score_str) in enumerate(all_metrics[:5], start=1):
+            word = index_to_word.get(idx)
+            if not word:
+                break
+
+            metric_name = metric_descriptions.get(metric_key, metric_key)
+
+            self.doc.preamble.append(
+                Command("newcommand", [NoEscape(f"\\Out{word}Name"), metric_name])
+            )
+
+            self.doc.preamble.append(
+                Command("newcommand", [NoEscape(f"\\Out{word}Score"), str(score_str)])
+            )
     
     # Assigning values used in LLM comment summary section
     def _add_summary_fields(self):
