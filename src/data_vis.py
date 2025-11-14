@@ -594,7 +594,8 @@ def generate_course_history_graph(
     subject_slug = _slug(subject)
     catalog_slug = _slug(catalog)
     filename = f"{subject_slug}_{catalog_slug}.png"
-    out_path = os.path.join(course_hist_dir, filename)
+    # out_path = os.path.join(course_hist_dir, filename) # Original director
+    out_path = os.path.join(paths.get("scorecard_dir"), filename) # DEBUG directory for temporary use
 
     fig.savefig(out_path)
     plt.close(fig)
