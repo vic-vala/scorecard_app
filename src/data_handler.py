@@ -5,7 +5,7 @@ import re
 import statistics
 from typing import Any, Dict, Mapping, Optional, List, Tuple
 import pandas as pd
-from src.utils import _is_true, _is_hundred, gpa_scale, GRADE_COLS, _parse_filename, _same_hundred_level, _parse_catalog_int
+from src.utils import _is_true, _is_hundred, gpa_scale, GRADE_COLS, _parse_filename, _same_hundred_level, _parse_catalog_int, course_to_json_path
 
 def viable_scorecards(json_dir: str, csv_path: str) -> pd.DataFrame:
     """
@@ -464,13 +464,18 @@ def get_unique_courses(csv_path):
 
     return result
 
-def get_courses_by_instructor(instructor_row: pd.Series, csv_path: str) -> pd.DataFrame:
+def get_courses_by_instructor(
+    instructor_row: pd.Series,
+    csv_path: str,
+    require_json: bool = False,
+) -> pd.DataFrame:
     """
     Returns a DataFrame of all courses taught by a given instructor.
 
     Args:
         instructor_row: A row from selected_scorecard_instructors containing instructor info
         csv_path: Path to the CSV file containing course data
+        require_json: If True, only include courses that have a JSON file at course_to_json_path(row)
 
     Returns:
         DataFrame with all courses taught by the instructor
@@ -481,7 +486,6 @@ def get_courses_by_instructor(instructor_row: pd.Series, csv_path: str) -> pd.Da
     for col in ["Instructor", "Subject", "Catalog Nbr", "Class Nbr", "Session Code"]:
         if col in df.columns:
             df[col] = df[col].fillna("").astype(str).str.strip()
-
 
     mask = pd.Series(True, index=df.index)
 
@@ -495,8 +499,16 @@ def get_courses_by_instructor(instructor_row: pd.Series, csv_path: str) -> pd.Da
         if "Instructor Last" in instructor_row and instructor_row["Instructor Last"]:
             mask &= (df["Instructor Last"] == instructor_row["Instructor Last"])
 
-    # Return filtered results
+    # Base filtered results
     result = df[mask].copy()
+
+    # Optionally require that a JSON file exists for each course
+    if require_json:
+        def _has_json(row: pd.Series) -> bool:
+            path = course_to_json_path(row)
+            return bool(path) and os.path.exists(path)
+
+        result = result[result.apply(_has_json, axis=1)].copy()
 
     print(f"✅ Found {len(result)} courses for instructor: {instructor_row.get('Instructor', 'N/A')}")
     return result
