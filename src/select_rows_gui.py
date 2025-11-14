@@ -34,7 +34,7 @@ HIDDEN_COLUMNS = [
 ]
 
 
-def select_rows_gui(df: pd.DataFrame) -> pd.DataFrame:
+def select_rows_gui(df: pd.DataFrame, instruction_text:str, title_text:str) -> pd.DataFrame:
     """
     Launches a GUI which allows you to select rows in a dataframe, with search options.
 
@@ -50,14 +50,8 @@ def select_rows_gui(df: pd.DataFrame) -> pd.DataFrame:
 
     # create main window
     root = tk.Tk()
-    root.title("Course/Instructor Selection")
+    root.title(title_text)
 
-    # instruction text area above everything
-    instruction_text = (
-        "Select all courses/instructorrs you wish to create scorecards for, and then press Confirm.\n"
-        "If you do not want to create any course/instructor specific scorecards, do not select any courses.\n"
-        "To search for specific courses, specify a column below and search to narrow down the displayed courses."
-    )
     instruction_label = ttk.Label(
         root,
         text=instruction_text,

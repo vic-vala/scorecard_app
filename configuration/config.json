@@ -41,5 +41,13 @@
         "match_year": "false",
         "match_subject": "false",
         "match_catalog_number": "hundred"
+    },
+    "gui_text": {
+        "session_name": "Select Course Sessions",
+        "session_text": "Select course sessions for Scorecard creation.\nEvery row selected will create one Scorecard PDF, with a full page of summary information about the course.\nWhen finished selecting all desired course sessions, press Confirm.",
+        "course_name": "Select Courses",
+        "course_text": "Select courses for Course History Graph creation.\nEvery row selected will create one Course History Graph PNG image, with a GPA over time for all course sessions, \ngrouped by instructor.\nWhen finished selecting all desired courses, press Confirm.",
+        "instructor_name": "Select Instructors",
+        "instructor_text": "Select instructors for Instructor Scorecard creation.\nEvery row selected will create one Instructor Scorecard PDF, with a short summary of key information about every course from \nthe instructor on file.\nWhen finished selecting all desired instructors, press Confirm."
     }
 }

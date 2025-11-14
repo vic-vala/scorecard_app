@@ -26,6 +26,7 @@ class Application:
         self.data_vis_settings = config['data_vis_settings']
         self.include_llm_insights = str(self.sc_settings.get("include_LLM_insights", "false")).lower() == "true"
         self.overwrite_json = str(config.get("overwrite_settings", {}).get("overwrite_json", "false")).lower() == "true"
+        self.gui_text = config['gui_text']
 
         # Set later
         self.overwrite_csv: bool
@@ -55,19 +56,19 @@ class Application:
 
     def scorecard_selection(self):
         print("🖥️ Opening Scorecard Selection GUI")
-        self.selected_scorecard_courses = select_rows_gui.select_rows_gui(self.viable_scorecards)
+        self.selected_scorecard_courses = select_rows_gui.select_rows_gui(self.viable_scorecards, self.gui_text['session_text'], self.gui_text['session_name'])
         print(f"  ✅ {len(self.selected_scorecard_courses)} course(s) selected.")
 
     def history_selection(self):
         unique_courses = data_handler.get_unique_courses(self.csv_path[0])
         print("🖥️ Opening Course History Selection GUI")
-        self.selected_history_courses = select_rows_gui.select_rows_gui(unique_courses)
+        self.selected_history_courses = select_rows_gui.select_rows_gui(unique_courses, self.gui_text['course_text'], self.gui_text['course_name'])
         print(f"  ✅ {len(self.selected_history_courses)} course(s) selected for history graphs.")
 
     def instructor_selection(self):
         instructors = data_handler.get_instructors(self.csv_path[0])
         print("🖥️ Opening Instructor Selection GUI")
-        self.selected_scorecard_instructors = select_rows_gui.select_rows_gui(instructors)
+        self.selected_scorecard_instructors = select_rows_gui.select_rows_gui(instructors, self.gui_text['instructor_text'], self.gui_text['instructor_name'])
         print(f"  ✅ {len(self.selected_scorecard_instructors)} instructor(s) selected.")
     
     def gather_llm_insights(self):
