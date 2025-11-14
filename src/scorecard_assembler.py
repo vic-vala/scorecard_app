@@ -446,7 +446,7 @@ def assemble_scorecard(
 
     # Source the grade histogram from the json path (similar naming structure)
     histrogram_name = course_to_stem(course)
-    histogram_full_path = os.path.join(histogram_dir, f"{histrogram_name}.png")
+    histogram_full_path = (os.path.abspath(os.path.join(histogram_dir, f"{histrogram_name}.png")))
 
     # Load the pdf json representation
     pdf_json = load_pdf_json(course_to_json_path(course))
@@ -468,9 +468,9 @@ def assemble_scorecard(
     print(f"  ✅ Saved LaTeX to {full_output_path}")
 
     # Save the latex as a pdf now
-    pdf_filename = latex_doc.output_filename
+    pdf_filename = f"{latex_doc.output_filename}.pdf"
     full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
-    latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
+    latex_doc.doc.generate_pdf(full_scorecard_output_path, clean_tex=True, compiler='pdflatex')
     print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
 
 
