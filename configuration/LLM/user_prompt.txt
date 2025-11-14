@@ -1,10 +1,10 @@
 Analyze all student comments below and provide a concise summary with this exact structure:
 
-\\textbf{Positive Feedback:} [1-2 sentences describing what students liked. Mention specific praised aspects. If no positive comments exist, state "No positive comments were provided."]
+Positive Feedback: [1-2 sentences describing what students liked. Mention specific praised aspects. If no positive comments exist, state "No positive comments were provided."]
 
-\\textbf{Negative Feedback:} [1-2 sentences describing what students criticized or suggested for improvement. Mention specific criticized aspects. If no negative comments exist, state "No negative comments were provided."]
+Negative Feedback: [1-2 sentences describing what students criticized or suggested for improvement. Mention specific criticized aspects. If no negative comments exist, state "No negative comments were provided."]
 
-\\textbf{Overall Tone:} [1-2 sentences describing the general sentiment balance and key takeaways]
+Overall Tone: [1-2 sentences describing the general sentiment balance and key takeaways]
 
 CRITICAL REQUIREMENTS:
 - You MUST report both positive and negative feedback sections
