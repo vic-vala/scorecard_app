@@ -12,6 +12,7 @@ PRETTY_NAME_MAP = {
     "pdf_source": ("PDF Source", "The folder where all Course Evaluation PDF files are located."),
     "excel_source": ("Excel Source", "The course history excel file."),
     "scorecard_dir": ("Scorecard Directory", "The desired folder for finised scorecard PDFs."),
+    "gguf_path": (".gguf file Source", "The .gguf file used for AI generated summaries."),
 
     "match_term": ("Match Term?", "Courses will only be compared against other courses of the same term. (Fall/Spring/Summer)\n(Recommended: True)"),
     "match_year": ("Match Year?", "Courses will only be compared against other courses of the same calendar year.\n(Recommended: True)"),
@@ -24,6 +25,7 @@ SHOWN_KEYS = [
     "pdf_source",
     "excel_source",
     "scorecard_dir",
+    "gguf_path",
     "include_LLM_insights",
     "match_term",
     "match_year",
