@@ -138,9 +138,9 @@ class _ScorecardDoc:
         ))
         # These are set to black currently until we want to add colors to deltas back. 
         # This needs to be dynamic since + doesn't always mean "good", and such
-        self.doc.preamble.append(NoEscape(r'\colorlet{pos}{black!60!black}')) 
-        self.doc.preamble.append(NoEscape(r'\colorlet{neg}{black!70!black}'))
-        self.doc.preamble.append(NoEscape(r'\colorlet{neu}{black!70!black}'))
+        self.doc.preamble.append(NoEscape(r'\colorlet{pos}{grey!60!black}')) 
+        self.doc.preamble.append(NoEscape(r'\colorlet{neg}{grey!70!black}'))
+        self.doc.preamble.append(NoEscape(r'\colorlet{neu}{grey!70!black}'))
 
         # Overview field commands
         self._add_overview_fields()
