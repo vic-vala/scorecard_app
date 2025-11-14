@@ -13,6 +13,14 @@ from src.utils import _slug, _get_numeric
 
 _GRADE_ORDER = ["E", "D", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"]
 
+_GRADE_GRADIENTS = {
+    "A": ("#ff3b19", "#f6b644"),  
+    "B": ("#0e7300", "#6be002"),  
+    "C": ("#1d38a1", "#0067f3"),  
+    "D": ("#930008", "#d90014"),  
+    "E": ("#930008", "#d90014"),  
+}
+
 def generate_data_visualization(
         config, 
         selected_scorecard_courses, 
@@ -107,6 +115,9 @@ def generate_course_grade_histogram(
     fig_height = height_px / dpi
 
     course_color = plot_cfg.get("course_color", "#cc6600")
+    # fallback gradient if a grade has no entry in _GRADE_GRADIENTS
+    course_bottom_color = plot_cfg.get("course_bottom_color", "#ffa64c")
+
     baseline_color = plot_cfg.get("baseline_color", "#000000")
     baseline_linewidth = float(plot_cfg.get("baseline_linewidth", 2.0))
 
@@ -176,13 +187,8 @@ def generate_course_grade_histogram(
 
     x = np.arange(len(_GRADE_ORDER))
 
-    # This gradient is vibe coded. If this causes issues go tell Joey to remove it
-    # Course bars with vertical gradient, connected (no gaps)
-    # Top color stays course_color (#1f4e79), bottom is #8fa6bc (configurable)
-    bottom_color = plot_cfg.get("course_bottom_color", "#ffa64c")
-    top_color = course_color  # "#1f4e79"
-
-    # Create bars with no solid facecolor
+    # Course bars with vertical gradients, connected (no gaps)
+    # Each base letter grade (A/B/C/D/E) gets its own gradient.
     bars = ax.bar(
         x,
         course_counts,
@@ -192,13 +198,22 @@ def generate_course_grade_histogram(
         edgecolor="none",
     )
 
-    # Vertical gradient image 0..1, mapped bottom -> top color
+    # Vertical gradient image 0..1, reused for all bars
     grad = np.linspace(0.0, 1.0, 256).reshape(256, 1)
-    cmap = mcolors.LinearSegmentedColormap.from_list(
-        "course_grad", [bottom_color, top_color]
-    )
 
-    for bar in bars:
+    # Precompute colormaps per grade label using the base letter (ignoring +/-)
+    grade_cmaps: dict[str, mcolors.Colormap] = {}
+    for grade_label in _GRADE_ORDER:
+        base_grade = (grade_label or "")[:1].upper()
+        bottom_hex, top_hex = _GRADE_GRADIENTS.get(
+            base_grade,
+            (course_bottom_color, course_color),
+        )
+        grade_cmaps[grade_label] = mcolors.LinearSegmentedColormap.from_list(
+            f"course_grad_{base_grade}", [bottom_hex, top_hex]
+        )
+
+    for grade_label, bar in zip(_GRADE_ORDER, bars):
         height = bar.get_height()
         if height <= 0:
             continue
@@ -207,6 +222,8 @@ def generate_course_grade_histogram(
         x_right = x_left + bar.get_width()
         y_bottom = 0.0
         y_top = height
+
+        cmap = grade_cmaps[grade_label]
 
         ax.imshow(
             grad,
