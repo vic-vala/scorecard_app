@@ -7,8 +7,8 @@ from tkinter import ttk, filedialog, messagebox
 # hard coded display names
 PRETTY_NAME_MAP = {
     "include_LLM_insights": ("Include LLM summary?", "If this setting is enabled, an AI model with generate a short summary of student comments on each course scorecard. This may take a few minutes per scorecard."),
-    "overwrite_csv": ("Overwrite CSV?", "[Advanced]\nOverwrites internal CSV files created from Excel sheets.\n(Recommended: False)"),
-    "overwrite_json": ("Overwrite JSON?", "[Advanced]\nOverwrites internal JSON files created from Excel sheets.\n(Recommended: False)"),
+    "overwrite_csv": ("Overwrite CSV?", "[Advanced]\nOverwrites internal CSV files created from Excel sheets.\n(Recommended: True)"),
+    "overwrite_json": ("Overwrite JSON?", "[Advanced]\nOverwrites internal JSON files created from Excel sheets.\n(Recommended: True)"),
     "pdf_source": ("PDF Source", "The folder where all Course Evaluation PDF files are located."),
     "excel_source": ("Excel Source", "The course history excel file."),
     "scorecard_dir": ("Scorecard Directory", "The desired folder for finised scorecard PDFs."),
