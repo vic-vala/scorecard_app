@@ -137,7 +137,7 @@ def get_helper_commands_template():
 
 \newcommand{\PageTitle}{\LARGE\bfseries\textcolor{accent}{\CourseHeader}}
 
-\newcommand{\PageSubtitle}{\footnotesize\textcolor{neu}{\BaselineText}}
+\newcommand{\PageSubtitle}{\footnotesize\textcolor{neu}{Compared Against: \BaselineText}}
 
 \newcommand{\posD}[1]{\textcolor{pos}{(#1)}}
 
