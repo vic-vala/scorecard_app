@@ -171,13 +171,21 @@ class FirstRunSetup:
         """
         return self.model_path.exists() and self.model_path.stat().st_size > 0
 
-    def install_tinytex(self) -> bool:
+    def install_tinytex(self, log_callback=None) -> bool:
         """
         Install TinyTeX LaTeX distribution.
+
+        Args:
+            log_callback: Optional callback function(message: str) for progress logging
 
         Returns:
             True if installation successful, False otherwise
         """
+        def log(message):
+            """Helper to log to both console and callback."""
+            print(message)
+            if log_callback:
+                log_callback(message)
         import subprocess
         import urllib.request
         import zipfile
@@ -185,27 +193,27 @@ class FirstRunSetup:
         import platform
 
         try:
-            print("📦 Installing TinyTeX...")
-            print("   This may take 5-10 minutes depending on your connection...")
+            log("📦 Installing TinyTeX...")
+            log("   This may take 5-10 minutes depending on your connection...")
 
             # Direct installation approach (more reliable than pytinytex)
             system = platform.system()
 
             if system == "Windows":
-                installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2025.11/tinitex.zip"
+                installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2025.10.31/TinyTeX-1-v2025.10.31.zip"
                 installer_file = self.tinytex_dir.parent / "tinytex_installer.zip"
             elif system == "Linux":
-                installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2025.11/tinitex.tar.gz"
+                installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2025.10.31/TinyTeX-1-v2025.10.31.tar.gz"
                 installer_file = self.tinytex_dir.parent / "tinytex_installer.tar.gz"
-            elif system == "Darwin":  # macOS
+            elif system == "Darwin":  # macOS, not currently supported
                 installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2025.11/tinitex.tgz"
                 installer_file = self.tinytex_dir.parent / "tinytex_installer.tgz"
             else:
-                print(f"❌ Unsupported platform: {system}")
+                log(f"❌ Unsupported platform: {system}")
                 return False
 
             # Download TinyTeX
-            print(f"   Downloading from {installer_url}...")
+            log(f"   Downloading from {installer_url}...")
             try:
                 with tqdm(
                     unit='B',
@@ -220,11 +228,11 @@ class FirstRunSetup:
 
                     urllib.request.urlretrieve(installer_url, installer_file, reporthook=report_progress)
             except Exception as e:
-                print(f"❌ Download failed: {e}")
+                log(f"❌ Download failed: {e}")
                 return False
 
             # Extract TinyTeX
-            print("   Extracting TinyTeX...")
+            log("   Extracting TinyTeX...")
             try:
                 if system == "Windows":
                     with zipfile.ZipFile(installer_file, 'r') as zip_ref:
@@ -250,7 +258,7 @@ class FirstRunSetup:
                                 shutil.rmtree(self.tinytex_dir)
                             extracted_folder.rename(self.tinytex_dir)
             except Exception as e:
-                print(f"❌ Extraction failed: {e}")
+                log(f"❌ Extraction failed: {e}")
                 if installer_file.exists():
                     installer_file.unlink()
                 return False
@@ -259,49 +267,93 @@ class FirstRunSetup:
             if installer_file.exists():
                 installer_file.unlink()
 
-            print("✅ TinyTeX installation complete")
+            log("✅ TinyTeX installation complete\n")
 
             # Install required packages using tlmgr
-            print("📦 Installing required LaTeX packages...")
+            log("📦 Installing required LaTeX packages...")
             tlmgr_path = self.get_latex_binary_path()
             if tlmgr_path:
                 tlmgr_dir = Path(tlmgr_path).parent
                 tlmgr_bin = tlmgr_dir / ('tlmgr.bat' if system == "Windows" else 'tlmgr')
 
                 if tlmgr_bin.exists():
+                    # Initialize tlmgr first (required for TinyTeX)
+                    log("  Initializing TinyTeX package manager...")
+                    try:
+                        # Update tlmgr itself
+                        result = subprocess.run(
+                            [str(tlmgr_bin), 'update', '--self'],
+                            capture_output=True,
+                            timeout=180,
+                            text=True
+                        )
+                        if result.returncode != 0:
+                            log(f"  ⚠️  Warning: tlmgr self-update failed: {result.stderr}")
+                    except Exception as e:
+                        log(f"  ⚠️  Warning: Could not update tlmgr: {e}")
+
+                    # Update package database
+                    try:
+                        log("  Updating package database...")
+                        result = subprocess.run(
+                            [str(tlmgr_bin), 'update', '--all'],
+                            capture_output=True,
+                            timeout=180,
+                            text=True
+                        )
+                        if result.returncode != 0 and "up to date" not in result.stdout.lower():
+                            log(f"  ⚠️  Warning: Package database update failed: {result.stderr}")
+                    except Exception as e:
+                        log(f"  ⚠️  Warning: Could not update package database: {e}")
+
                     required_packages = [
                         'tcolorbox',
-                        'tabularx',
+                        'tools',        # Contains tabularx
                         'xcolor',
                         'geometry',
-                        'graphicx',
+                        'graphics',     # Contains graphicx
                         'booktabs',
                         'pgf',
                         'environ',
                         'trimspaces',
-                        'etoolbox'
+                        'etoolbox',
+                        'lastpage',
+                        'microtype',
+                        'tikzfill',
+                        'pdfcol',
+                        'listings',
+                        'listingsutf8',
+                        'xstring'       
                     ]
 
                     for package in required_packages:
-                        print(f"  Installing {package}...")
+                        log(f"  Installing {package}...")
                         try:
-                            subprocess.run(
+                            result = subprocess.run(
                                 [str(tlmgr_bin), 'install', package],
-                                check=True,
                                 capture_output=True,
-                                timeout=120
+                                timeout=120,
+                                text=True
                             )
+                            if result.returncode == 0:
+                                log(f"    ✓ {package} installed")
+                            else:
+                                # Check if already installed
+                                if "already installed" in result.stdout.lower() or "already installed" in result.stderr.lower():
+                                    log(f"    ✓ {package} already installed")
+                                else:
+                                    log(f"    ⚠️  {package} installation failed: {result.stderr.strip()}")
                         except subprocess.TimeoutExpired:
-                            print(f"  ⚠️  Warning: {package} installation timed out")
+                            log(f"    ⚠️  {package} installation timed out")
                         except Exception as e:
-                            print(f"  ⚠️  Warning: Could not install {package}: {e}")
+                            log(f"    ⚠️  Could not install {package}: {e}")
 
-            print("✅ LaTeX packages installation complete")
+            log("✅ LaTeX packages installation complete")
             return True
 
         except Exception as e:
-            print(f"❌ TinyTeX installation failed: {e}")
-            print("⚠️  You may need to install LaTeX manually")
+            log(f"❌ TinyTeX installation failed: {e}")
+            log("⚠️  You may need to install LaTeX manually")
             import traceback
             traceback.print_exc()
             return False
@@ -392,6 +444,57 @@ class FirstRunSetup:
         if self.model_exists():
             return self.model_path
         return None
+
+    def update_config_model_path(self, new_model_path: str) -> bool:
+        """
+        Update the config.json file with a new model path.
+
+        Args:
+            new_model_path: Absolute path to the GGUF model file
+
+        Returns:
+            True if config was updated successfully, False otherwise
+        """
+        import json
+        from src.resource_utils import get_writable_config_path
+
+        try:
+            # Get the writable config path (in dist or project root)
+            config_path = get_writable_config_path()
+
+            # Read current config
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+
+            # Update gguf_path
+            if 'paths' not in config:
+                config['paths'] = {}
+
+            # Convert to Path object and make relative if possible
+            new_path = Path(new_model_path)
+            try:
+                # Try to make it relative to project root
+                rel_path = new_path.relative_to(self.project_root)
+                config['paths']['gguf_path'] = f"./{rel_path.as_posix()}"
+            except ValueError:
+                # If outside project root, use absolute path
+                config['paths']['gguf_path'] = str(new_path.as_posix())
+
+            # Write updated config
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=4)
+
+            # Update self.model_path to reflect the change
+            self.model_path = new_path
+
+            print(f"✅ Updated config with model path: {config['paths']['gguf_path']}")
+            return True
+
+        except Exception as e:
+            print(f"❌ Failed to update config: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     def run_setup(self, model_url: Optional[str] = None, model_sha256: Optional[str] = None) -> bool:
         """
