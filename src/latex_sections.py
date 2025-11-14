@@ -26,7 +26,7 @@ def get_overview_section_template():
 	\renewcommand{\arraystretch}{1.25}
 	\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
 
-# 	% -------- Left column --------
+ 	% -------- Left column --------
 	\begin{tabular}{@{}l >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
 		\MetricLeft{Course Size}{\CourseSize}{} & \autoD{\CourseSizeDelta}\\
 		\MetricLeft{Responses}{\Responses}{\ResponseRate} & \autoD{\ResponseDelta}\\
@@ -36,7 +36,7 @@ def get_overview_section_template():
 		\MetricLeft{GPA}{\GPA}{} & \autoD{\GPADelta}\\
 	\end{tabular}
 	&
-# 	% -------- Right column --------
+ 	% -------- Right column --------
 	\begin{tabular}{@{}l >{\raggedleft\arraybackslash}p{\DeltaColW}@{}}
 		\MetricLeft{Pass}{\PassNum}{\PassPct} & \autoD{\PassDelta}\\
 		\MetricLeft{Fail}{\FailNum}{\FailPct} & \autoD{\FailDelta}\\
@@ -100,7 +100,7 @@ def get_grade_distribution_section_template(grade_dist_image):
 	\vspace{2pt}
 	\begin{tabularx}{\textwidth}{@{} X T{\RightColW} @{}}
 
-#         % ---- Histogram WITHOUT outline ----
+        % ---- Histogram WITHOUT outline ----
 		\begin{minipage}[c][\GradeVisH][c]{\linewidth}\centering
 			\includegraphics[width=\linewidth, height=\GradeVisH, keepaspectratio]{''' + grade_dist_image + r'''}
 		\end{minipage}
@@ -165,7 +165,7 @@ def get_helper_commands_template():
 def get_box_style_template():
     """Returns the LaTeX template for tcolorbox styling"""
     return r'''
-# % ---------- Box style (fixed: enable enhanced so frame exists) ----------
+% ---------- Box style (fixed: enable enhanced so frame exists) ----------
 \tcbset{
 	enhanced,
 	frame style={draw=black!35, line width=.6pt},
