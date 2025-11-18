@@ -125,6 +125,7 @@ if __name__ == "__main__":
     try:
         # Load config early for setup
         config = utils.load_config()
+        utils.verify_directories(config['paths'])
 
         # First-run setup check
         from src.first_run_setup import FirstRunSetup, DEFAULT_MODEL_URL
@@ -148,7 +149,6 @@ if __name__ == "__main__":
         # Config GUI
         CONFIG_PATH = utils.CONFIG_PATH
         print("🖥️ Opening Config GUI")
-        utils.verify_directories(config['paths'])
         config_gui.open_config_editor(CONFIG_PATH)
 
         # Reload config after GUI (in case user modified it)
