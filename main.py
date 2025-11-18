@@ -1,6 +1,11 @@
 import json
 import os
+from pathlib import Path
 import pandas as pd
+
+# Fix matplotlib font cache for frozen apps (prevents slow startup)
+os.environ['MPLCONFIGDIR'] = str(Path.home() / '.matplotlib')
+
 from src import (
     pdf_parser,
     utils,
@@ -79,6 +84,7 @@ class Application:
         """
 
         if (self.include_llm_insights):
+            self.sc_settings['debug_replace_LLM_with_placeholder'] = 'false'
             print("🤖 Running LLM I/O")   
             llm_io.run_llm(
                 gguf_path=self.paths['gguf_path'],
@@ -117,15 +123,39 @@ class Application:
 
 if __name__ == "__main__":
     try:
+        # Load config early for setup
+        config = utils.load_config()
+        utils.verify_directories(config['paths'])
+
+        # First-run setup check
+        from src.first_run_setup import FirstRunSetup, DEFAULT_MODEL_URL
+        from src.setup_wizard import run_setup_wizard
+
+        setup = FirstRunSetup(config=config)
+
+        if setup.is_first_run():
+            print("\n" + "="*60)
+            print("  FIRST RUN DETECTED - Starting Setup Wizard")
+            print("="*60 + "\n")
+
+            # Run setup wizard GUI
+            run_setup_wizard(setup)
+
+            print("\n✅ Setup complete. Starting application...\n")
+
+        # Add TinyTeX to PATH (needed for pdflatex)
+        setup.add_tinytex_to_path()
+
         # Config GUI
         CONFIG_PATH = utils.CONFIG_PATH
         print("🖥️ Opening Config GUI")
         config_gui.open_config_editor(CONFIG_PATH)
 
+        # Reload config after GUI (in case user modified it)
+        config = utils.load_config()
+
         # Application object to logically organize tasks
-        app = Application(config=utils.load_config())
-        
-        utils.verify_directories(app.paths)
+        app = Application(config=config)
         app.parse_excel()
         app.parse_pdfs()
 

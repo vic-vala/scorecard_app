@@ -4,6 +4,7 @@ import json
 import pandas as pd
 from llama_cpp import Llama
 from src.utils import load_pdf_json, course_to_json_path
+from src.resource_utils import get_resource_path
 
 # Hardware/Computing Parameters
 N_CTX        = int(os.environ.get("N_CTX", 32768)) # Change this for laptops?
@@ -19,28 +20,55 @@ MIN_P      = float(os.environ.get("MIN_P", 0.05))
 
 
 def load_system_prompt(llm_dir):
-    system_prompt_path = os.path.join(llm_dir, "system_prompt.txt")
+    """
+    Load system prompt from bundled resources.
+
+    Args:
+        llm_dir: Relative path to LLM directory (e.g., './configuration/LLM')
+
+    Returns:
+        System prompt string or None if not found
+    """
+    # Build relative path for get_resource_path
+    if llm_dir.startswith('./'):
+        llm_dir = llm_dir[2:]  # Remove leading './'
+
+    system_prompt_path = get_resource_path(os.path.join(llm_dir, "system_prompt.txt"))
     system_prompt = None
-    
+
     ## Retrieve system_prompt.txt
     try:
         with open(system_prompt_path, "r", encoding="utf-8") as f:
             system_prompt = f.read().strip()
     except FileNotFoundError:
-        print(f"Missing system prompt path {system_prompt_path}", file=sys.stderr)
+        print(f"Missing system prompt at {system_prompt_path}", file=sys.stderr)
 
     return system_prompt
 
 def load_user_prompt(llm_dir, pdf_json):
-    user_prompt_path = os.path.join(llm_dir, "user_prompt.txt")
+    """
+    Load user prompt from bundled resources and append evaluation data.
+
+    Args:
+        llm_dir: Relative path to LLM directory (e.g., './configuration/LLM')
+        pdf_json: Parsed PDF JSON containing free response comments
+
+    Returns:
+        User prompt string or None if not found
+    """
+    # Build relative path for get_resource_path
+    if llm_dir.startswith('./'):
+        llm_dir = llm_dir[2:]  # Remove leading './'
+
+    user_prompt_path = get_resource_path(os.path.join(llm_dir, "user_prompt.txt"))
     user_prompt = None
 
-    # TODO: Append Free Response Information (definitely better way to do this)
     try:
         with open(user_prompt_path, "r", encoding="utf-8") as f:
             user_prompt = f.read().strip()
     except FileNotFoundError:
-        print(f"Missing system prompt path {user_prompt_path}", file=sys.stderr)
+        print(f"Missing user prompt at {user_prompt_path}", file=sys.stderr)
+        return None
     
     user_prompt += "\n\nFREE RESPONSE COMMENTS\n"
 
@@ -92,9 +120,9 @@ def run_llm(
         print("  ⚠️ Placeholders enabled for LLM generation! debug_replace_LLM_with_placeholder is enabled in config!")
 
         placeholder_text = (
-            "\\textbf{Positive Feedback:} Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n\n"
-            "\\textbf{Negative Feedback:} Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n\n"
-            "\\textbf{Overall Tone:} Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo."
+            "Positive Feedback: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n\n\\par\n"
+            "Negative Feedback: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n\n\\par\n"
+            "Overall Tone: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo."
         )
         for _, course in selected_scorecard_courses.iterrows():
             pdf_json_path = course_to_json_path(course=course,config=config)

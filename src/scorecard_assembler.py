@@ -160,11 +160,11 @@ class _ScorecardDoc:
             'definecolor',
             arguments=['accent', 'HTML', '1F4E79']
         ))
-        # These are set to black currently until we want to add colors to deltas back. 
+        # These are set to black currently until we want to add colors to deltas back.
         # This needs to be dynamic since + doesn't always mean "good", and such
-        self.doc.preamble.append(NoEscape(r'\colorlet{pos}{grey!60!black}')) 
-        self.doc.preamble.append(NoEscape(r'\colorlet{neg}{grey!70!black}'))
-        self.doc.preamble.append(NoEscape(r'\colorlet{neu}{grey!70!black}'))
+        self.doc.preamble.append(NoEscape(r'\colorlet{pos}{gray!60!black}'))
+        self.doc.preamble.append(NoEscape(r'\colorlet{neg}{gray!70!black}'))
+        self.doc.preamble.append(NoEscape(r'\colorlet{neu}{gray!70!black}'))
 
         # Overview field commands
         self._add_overview_fields()
@@ -554,7 +554,12 @@ def assemble_scorecard(
 
     # Source the grade histogram from the json path (similar naming structure)
     histrogram_name = course_to_stem(course)
-    histogram_full_path = os.path.join(histogram_dir, f"{histrogram_name}.png")
+    histogram_full_path = os.path.abspath(os.path.join(histogram_dir, f"{histrogram_name}.png"))
+
+    # Convert backslashes to forward slashes for LaTeX compatibility on Windows
+    # LaTeX treats backslashes as escape characters, so we need to use forward slashes
+    if isinstance(histogram_full_path, str):
+        histogram_full_path = histogram_full_path.replace('\\', '/')
 
     # Load the pdf json representation
     pdf_json = load_pdf_json(course_to_json_path(course))
@@ -579,10 +584,10 @@ def assemble_scorecard(
     print(f"  ✅ Saved LaTeX to {full_output_path}")
 
     # Save the latex as a pdf now
-    #pdf_filename = latex_doc.output_filename
-    #full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
-    #latex_doc.doc.generate_pdf(pdf_filename, clean_tex=False, compiler='pdflatex')
-   # print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
+    pdf_filename = f"{latex_doc.output_filename}.pdf"
+    full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
+    latex_doc.doc.generate_pdf(full_scorecard_output_path, clean_tex=True, compiler='pdflatex')
+    print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
 
 def assemble_instructor_scorecard(
     instructor: Mapping[str, Any],
@@ -597,6 +602,7 @@ def assemble_instructor_scorecard(
     paths = config['paths']
     histogram_dir = paths['grade_histogram_dir']
     tex_output_path = paths['tex_dir']
+    scorecard_output_path = paths['scorecard_dir']
 
     # Get all courses for this instructor
     instructor_courses = get_courses_by_instructor(instructor, csv_path, True)
@@ -668,7 +674,11 @@ def assemble_instructor_scorecard(
     first_course = instructor_courses.iloc[0]
     gpa_graph_dir = paths['instructor_course_gpa_graph_dir']
     gpa_graph_name = instructor_to_stem(first_course)
-    gpa_graph_full_path = os.path.join(gpa_graph_dir, f"{gpa_graph_name}.png")
+    gpa_graph_full_path = os.path.abspath(os.path.join(gpa_graph_dir, f"{gpa_graph_name}.png"))
+
+    # Convert backslashes to forward slashes for LaTeX compatibility on Windows
+    if isinstance(gpa_graph_full_path, str):
+        gpa_graph_full_path = gpa_graph_full_path.replace('\\', '/')
 
     master_doc.append(NoEscape(
         rf'\includegraphics[width=\textwidth,height=1\textheight,keepaspectratio]{{{gpa_graph_full_path}}}'
@@ -678,5 +688,10 @@ def assemble_instructor_scorecard(
     output_filename = f"{instructor.get('Instructor')}_Overview"
     full_output_path = os.path.join(tex_output_path, output_filename)
     master_doc.generate_tex(full_output_path)
-
     print(f"  ✅ Saved instructor LaTeX to {full_output_path}")
+
+    # Save the latex as a pdf now
+    pdf_filename = f"{output_filename}.pdf"
+    full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
+    master_doc.generate_pdf(full_scorecard_output_path, clean_tex=True, compiler='pdflatex')
+    print(f"📝✅ Saved instructor Scorecard to {full_scorecard_output_path}")
