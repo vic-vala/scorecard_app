@@ -17,6 +17,7 @@ uv.lock
 temporary_files/
 input_files/
 resources/
+scorecards/
 *.gguf
 ./*.tex
 
