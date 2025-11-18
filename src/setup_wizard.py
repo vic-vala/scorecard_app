@@ -210,7 +210,7 @@ class SetupWizard:
         self.download_continue_btn = ttk.Button(
             frame,
             text="Continue",
-            command=lambda: self.show_page(3),
+            command=self.on_download_continue,
             state=tk.DISABLED
         )
         self.download_continue_btn.pack(pady=20)
@@ -411,6 +411,11 @@ class SetupWizard:
                 "Model download failed. You can try again later or add a model manually."
             )
             self.download_continue_btn.config(state=tk.NORMAL)
+
+    def on_download_continue(self):
+        """Handle continue button after download completion."""
+        self.show_page(3)
+        self.start_latex_install()
 
     def start_latex_install(self):
         """Start LaTeX installation in background thread."""
