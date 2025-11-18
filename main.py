@@ -84,7 +84,6 @@ class Application:
         """
 
         if (self.include_llm_insights):
-            self.sc_settings['debug_replace_LLM_with_placeholder'] = 'false'
             print("🤖 Running LLM I/O")   
             llm_io.run_llm(
                 gguf_path=self.paths['gguf_path'],
