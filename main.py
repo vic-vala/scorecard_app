@@ -85,14 +85,19 @@ class Application:
         """
 
         if (self.include_llm_insights):
-            print("🤖 Running LLM I/O")   
-            llm_io.run_llm(
-                gguf_path=self.paths['gguf_path'],
-                selected_scorecard_courses=self.selected_scorecard_courses,
-                llm_dir=self.paths['llm_prompt_dir'],
-                config=self.config,
-            )
-            print("  ✅ LLM Tasks Completed")
+            print("🤖 Running LLM I/O")
+        
+            from src.llm_loading_gui import LLMLoadingGUI
+        
+            selected_courses = len(self.selected_scorecard_courses)
+            selected_instructors = len(self.selected_scorecard_instructors)
+        
+       
+            llm_gui = LLMLoadingGUI(selected_courses, selected_instructors)
+            insights = llm_gui.show()  
+        
+            print(" ✅ LLM Tasks Completed")
+
 
     def generate_data_visualizations(self):
         print("📈 Generating Data Visualizations")
