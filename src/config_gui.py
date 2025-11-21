@@ -35,11 +35,6 @@ SHOWN_KEYS = [
     "overwrite_json",
 ]
 
-def prettify_key(key: str) -> str:
-    if key in PRETTY_NAME_MAP:
-        return PRETTY_NAME_MAP[key]
-    return key.replace("_", " ").title()
-
 def _looks_like_path(key: str, value) -> bool:
     if not isinstance(value, str):
         return (
