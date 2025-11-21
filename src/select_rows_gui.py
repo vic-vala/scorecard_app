@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
 import pandas as pd
+from src.theme import apply_theme
 
 # columns in this list will NOT be shown in the GUI
 HIDDEN_COLUMNS = [
@@ -31,6 +32,7 @@ HIDDEN_COLUMNS = [
     "Y",
     "Z",
     "Class Size",
+    "GPA",
 ]
 
 GUI_TEXT = {
@@ -192,15 +194,19 @@ class _SelectionTab:
             self._reload_tree(list(range(len(self.df))))
 
     def _autosize_columns(self, row_ids):
-        style = ttk.Style()
-        font_name = style.lookup("Treeview", "font")
-        if not font_name:
-            font_name = "TkDefaultFont"
-        tree_font = tkfont.nametofont(font_name)
+        style = ttk.Style(self.tree)
+        font_spec = style.lookup("Treeview", "font")
+        if not font_spec:
+            font_spec = "TkDefaultFont"
+
+        try:
+            tree_font = tkfont.Font(self.tree, font=font_spec)
+        except tk.TclError:
+            tree_font = tkfont.nametofont("TkDefaultFont")
 
         padding = 20
 
-        # selected checkbox column
+        # "Selected" checkbox column
         check_heading = "Selected"
         max_sel_width = max(
             tree_font.measure(check_heading),
@@ -209,7 +215,7 @@ class _SelectionTab:
         )
         self.tree.column("__selected__", width=max_sel_width + padding, anchor=tk.CENTER)
 
-        # dataframe columns (only visible ones)
+        # Dataframe columns (only visible ones)
         for col in self.visible_cols:
             heading = str(col)
             max_width = tree_font.measure(heading)
@@ -376,6 +382,7 @@ def select_rows_gui_with_tabs(
     instructor_df = _normalize(instructor_df)
 
     root = tk.Tk()
+    apply_theme(root, theme="light")
     root.title("Scorecard / History / Instructor Selection")
 
     notebook = ttk.Notebook(root)

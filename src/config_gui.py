@@ -3,6 +3,7 @@ import os
 import sys
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from src.theme import apply_theme
 
 # hard coded display names
 PRETTY_NAME_MAP = {
@@ -64,26 +65,27 @@ def open_config_editor(json_path: str) -> None:
 
     # tk
     root = tk.Tk()
+    apply_theme(root, theme="light")
     root.title("Configuration")
-    root.geometry("900x650")
+    root.geometry("1000x900")
 
     fields = {}
 
     def add_option_row(parent, section_name, key, value):
-        row = tk.Frame(parent)
+        row = ttk.Frame(parent)
         row.pack(fill="x", padx=8, pady=4)
 
         # description above the option
         desc_text = get_description(key)
         if desc_text:
-            desc_label = tk.Label(row, text=desc_text, anchor="w", justify="left")
+            desc_label = ttk.Label(row, text=desc_text, anchor="w", justify="left")
             desc_label.pack(fill="x")
 
         # line that contains label + control
-        line = tk.Frame(row)
+        line = ttk.Frame(row)
         line.pack(fill="x")
 
-        label = tk.Label(line, text=prettify_key(key), width=26, anchor="w")
+        label = ttk.Label(line, text=prettify_key(key), width=26, anchor="w")
         label.pack(side="left")
 
         # decide control type
@@ -106,7 +108,7 @@ def open_config_editor(json_path: str) -> None:
 
         elif is_bool or is_bool_str:
             var = tk.BooleanVar(value=(value if is_bool else value.lower() == "true"))
-            chk = tk.Checkbutton(line, variable=var)
+            chk = ttk.Checkbutton(line, variable=var)
             chk.pack(side="left", anchor="w")
             fields[(section_name, key)] = {
                 "var": var,
@@ -115,7 +117,7 @@ def open_config_editor(json_path: str) -> None:
 
         elif is_path:
             var = tk.StringVar(value=str(value))
-            ent = tk.Entry(line, textvariable=var)
+            ent = ttk.Entry(line, textvariable=var)
             ent.pack(side="left", fill="x", expand=True)
 
             def choose_path(target_var=var, directory=use_dir):
@@ -131,22 +133,22 @@ def open_config_editor(json_path: str) -> None:
                 if p:
                     target_var.set(os.path.normpath(p))
 
-            btn = tk.Button(line, text="Browse", command=choose_path)
+            btn = ttk.Button(line, text="Browse", command=choose_path)
             btn.pack(side="left", padx=6)
             fields[(section_name, key)] = {"var": var, "type": "str"}
 
         else:
             var = tk.StringVar(value=str(value))
-            ent = tk.Entry(line, textvariable=var)
+            ent = ttk.Entry(line, textvariable=var)
             ent.pack(side="left", fill="x", expand=True)
             fields[(section_name, key)] = {"var": var, "type": "str"}
 
 
     # main scrollable area (single page, no tabs)
-    frame = tk.Frame(root)
+    frame = ttk.Frame(root)
     canvas = tk.Canvas(frame)
-    vsb = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
-    inner = tk.Frame(canvas)
+    vsb = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
+    inner = ttk.Frame(canvas)
 
     inner.bind(
         "<Configure>",
@@ -206,10 +208,10 @@ def open_config_editor(json_path: str) -> None:
 
     btn_bar = tk.Frame(root)
     btn_bar.pack(fill="x", padx=8, pady=8)
-    tk.Button(btn_bar, text="Save", command=save_and_close).pack(
+    ttk.Button(btn_bar, text="Save", command=save_and_close).pack(
         side="right", padx=4
     )
-    tk.Button(btn_bar, text="Continue", command=root.destroy).pack(
+    ttk.Button(btn_bar, text="Continue", command=root.destroy).pack(
         side="right", padx=4
     )
 
