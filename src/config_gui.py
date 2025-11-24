@@ -11,14 +11,14 @@ PRETTY_NAME_MAP = {
     "overwrite_csv": ("Overwrite CSV?", "[Advanced]\nOverwrites internal CSV files created from Excel sheets.\n(Recommended: True)"),
     "overwrite_json": ("Overwrite JSON?", "[Advanced]\nOverwrites internal JSON files created from Excel sheets.\n(Recommended: True)"),
     "pdf_source": ("PDF Source", "The folder where all Course Evaluation PDF files are located."),
-    "excel_source": ("Excel Source", "The course history excel file."),
-    "scorecard_dir": ("Scorecard Directory", "The desired folder for finised scorecard PDFs."),
+    "excel_source": ("Excel Source", "The course history Excel file."),
+    "scorecard_dir": ("Scorecard Directory", "The desired folder for finished scorecard PDFs."),
     "gguf_path": (".gguf file Source", "The .gguf file used for AI generated summaries."),
 
     "match_term": ("Match Term?", "Courses will only be compared against other courses of the same term. (Fall/Spring/Summer)\n(Recommended: True)"),
     "match_year": ("Match Year?", "Courses will only be compared against other courses of the same calendar year.\n(Recommended: True)"),
-    "match_subject": ("Match Subject?", "Courses will only be comapred against other courses of the same subject. (CSE, IEE, SER, etc.)\n(Recommended: True)"),
-    "match_catalog_number": ("Match Catalog Number?", "Courses will only be comapred against other courses of the same catalog number. \nIf the \"hundred\" option is selected, all courses in the same x00-x99 range will be compared to each other. (100-199, 200-299, 300-399, etc.)\n(Recommended: Hundred)"),
+    "match_subject": ("Match Subject?", "Courses will only be compared against other courses of the same subject. (CSE, IEE, SER, etc.)\n(Recommended: True)"),
+    "match_catalog_number": ("Match Catalog Number?", "Courses will only be compared against other courses of the same catalog number. \nIf the \"hundred\" option is selected, all courses in the same x00-x99 range will be compared to each other. (100-199, 200-299, 300-399, etc.)\n(Recommended: Hundred)"),
 }
 
 # keys shown in the GUI (all others are hidden) and their display order
