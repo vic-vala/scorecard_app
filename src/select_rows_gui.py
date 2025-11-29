@@ -117,7 +117,7 @@ class _SelectionTab:
         search_entry = ttk.Entry(search_frame, textvariable=self.search_var, width=30)
         search_entry.pack(side=tk.LEFT, padx=(0, 10))
 
-        ttk.Button(search_frame, text="Search", command=self._apply_filter).pack(
+        ttk.Button(search_frame, text="Search", style="Accent.TButton", command=self._apply_filter).pack(
             side=tk.LEFT, padx=(0, 5)
         )
         ttk.Button(search_frame, text="Reset", command=self._reset_filter).pack(
@@ -422,7 +422,7 @@ def select_rows_gui_with_tabs(
         results["instructor"] = instructor_tab.get_selected_dataframe()
         root.destroy()
 
-    ttk.Button(bottom_frame, text="Confirm", command=on_confirm).pack(
+    ttk.Button(bottom_frame, text="Confirm", style="Accent.TButton", command=on_confirm).pack(
         side=tk.RIGHT, padx=(5, 0)
     )
 
