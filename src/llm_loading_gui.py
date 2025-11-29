@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from src.theme import apply_theme
 import threading
 
 class LLMLoadingGUI:
@@ -23,6 +24,7 @@ class LLMLoadingGUI:
             config: Application config dict
         """
         self.window = tk.Tk()
+        apply_theme(root=self.window, theme="light")
         self.window.title("ASU Scorecard Generator - LLM Processing")
         self.window.geometry("800x600")
         self.window.resizable(False, False)
@@ -91,6 +93,7 @@ class LLMLoadingGUI:
             frame,
             text="Continue",
             command=self.on_complete,
+            style="Accent.TButton",
             state=tk.DISABLED
         )
         self.continue_btn.pack(pady=20)
