@@ -133,11 +133,11 @@ class Application:
 
 if __name__ == "__main__":
     try:
-        # Load config early for setup
+        # Load config early to setup default directories 
         config = utils.load_config()
         utils.verify_directories(config['paths'])
 
-        # First-run setup check
+        # First-run setup check for gguf, TinyTex, and ./resources/.setup_complete flag
         from src.first_run_setup import FirstRunSetup, DEFAULT_MODEL_URL
         from src.setup_wizard import run_setup_wizard
 
