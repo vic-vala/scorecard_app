@@ -48,6 +48,10 @@ a = Analysis(
 
         # Schema files
         (os.path.join(project_root, 'src/schema/*.py'), 'src/schema'),
+
+        # Azure ttk theme files
+        (os.path.join(project_root, 'src/azure.tcl'), 'src'),
+        (os.path.join(project_root, 'src/theme'), 'src/theme'),
     ],
     hiddenimports=[
         # Tkinter and GUI
