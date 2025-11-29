@@ -177,7 +177,6 @@ def run_llm(
         return
     
     total_courses = len(selected_scorecard_courses)
-    print(selected_scorecard_courses)
     for idx, (_, course) in enumerate(selected_scorecard_courses.iterrows(), 1):
         pdf_json_path = course_to_json_path(course)
         pdf_json = load_pdf_json(pdf_json_path)
