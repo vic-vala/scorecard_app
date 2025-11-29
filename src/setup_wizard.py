@@ -12,6 +12,7 @@ from tkinter import ttk, filedialog, messagebox
 import threading
 from typing import Optional
 from src.first_run_setup import DEFAULT_MODEL_URL, DEFAULT_MODEL_NAME
+from src.theme import apply_theme
 
 
 class SetupWizard:
@@ -26,8 +27,9 @@ class SetupWizard:
         """
         self.setup = setup_manager
         self.root = tk.Tk()
+        apply_theme(root=self.root, theme="light")
         self.root.title("ASU Scorecard Generator - First Run Setup")
-        self.root.geometry("700x500")
+        self.root.geometry("800x600")
         self.root.resizable(False, False)
 
         # State
@@ -85,6 +87,7 @@ class SetupWizard:
         continue_btn = ttk.Button(
             btn_frame,
             text="Continue",
+            style="Accent.TButton",
             command=lambda: self.show_page(1)
         )
         continue_btn.pack()
@@ -165,6 +168,7 @@ class SetupWizard:
         ttk.Button(
             btn_frame,
             text="Continue",
+            style="Accent.TButton",
             command=self.process_model_choice
         ).pack(side=tk.LEFT, padx=5)
 
@@ -262,6 +266,7 @@ class SetupWizard:
         self.latex_continue_btn = ttk.Button(
             frame,
             text="Continue",
+            style="Accent.TButton",
             command=lambda: self.show_page(4),
             state=tk.DISABLED
         )
@@ -295,6 +300,7 @@ class SetupWizard:
         finish_btn = ttk.Button(
             frame,
             text="Finish and Launch Application",
+            style="Accent.TButton",
             command=self.finish_setup
         )
         finish_btn.pack(pady=20)
@@ -455,7 +461,7 @@ class SetupWizard:
         else:
             self.latex_status.config(text="⚠️ LaTeX installation had issues")
             self.add_latex_log("\n⚠️ Installation completed with warnings.\n")
-            self.latex_continue_btn.config(state=tk.NORMAL)
+            self.latex_continue_btn.config(style="Accent.TButton", state=tk.NORMAL)
             messagebox.showwarning(
                 "Installation Warning",
                 "LaTeX installation had some issues. You may need to install LaTeX manually."

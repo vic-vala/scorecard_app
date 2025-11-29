@@ -94,10 +94,11 @@ def load_user_prompt(llm_dir, pdf_json):
 
 
 def run_llm(
-        gguf_path, 
-        selected_scorecard_courses: pd.DataFrame, 
-        llm_dir, 
-        config=None
+        gguf_path,
+        selected_scorecard_courses: pd.DataFrame,
+        llm_dir,
+        config=None,
+        log_callback=None
 ):
     """
     Spins up the LLM & generates an LLM summary for each viable `scorecard_set`
@@ -107,7 +108,14 @@ def run_llm(
         scorecards_to_generate (`List` of (`tuple` of (`dict`, `./path/to/*.json`))): a `scorecard_set`
         llm_dir (`str`): directory containing system/user prompts
         config (`dict`, optional): full application config
+        log_callback (`callable`, optional): function to call with log messages
     """
+
+    def log(message):
+        """Helper to log both to console and callback"""
+        print(message)
+        if log_callback:
+            log_callback(message)
 
     # determine whether to use debug placeholder
     debug_replace_llm_with_placeholder = False
@@ -117,7 +125,7 @@ def run_llm(
         ).lower() == "true"
 
     if debug_replace_llm_with_placeholder:
-        print("  ⚠️ Placeholders enabled for LLM generation! debug_replace_LLM_with_placeholder is enabled in config!")
+        log("  ⚠️ Placeholders enabled for LLM generation! debug_replace_LLM_with_placeholder is enabled in config!")
 
         placeholder_text = (
             "Positive Feedback: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc sit amet tempor lacus, sagittis varius elit. Cras dictum tellus in nulla interdum, et congue diam iaculis. Proin in bibendum dui. Mauris sit amet sagittis sapien, et volutpat urna. Nulla in nisi ac urna commodo.\n\n\\par\n"
@@ -133,23 +141,25 @@ def run_llm(
             with open(pdf_json_path, "w", encoding="utf-8") as out_f:
                 json.dump(pdf_json, out_f, indent=4)
 
-            print(f"  🟧 Placeholder LLM summary generated for: {pdf_json_path}")
+            log(f"  🟧 Placeholder LLM summary generated for: {pdf_json_path}")
 
         return
 
     # normal behavior below
     if not os.path.exists(gguf_path):
-        print(f"GGUF model not found at {gguf_path}. Skipping LLM analysis.", file=sys.stderr)
+        log(f"❌ GGUF model not found at {gguf_path}. Skipping LLM analysis.")
         return
 
     # Retrieve system prompt
+    log("📝 Loading system prompt...")
     system_prompt = load_system_prompt(llm_dir)
 
     if not system_prompt:
-        print("Could not load system prompts, skipping LLM analysis", file=sys.stderr)
+        log("❌ Could not load system prompts, skipping LLM analysis")
         return
-    
+
     ## Instantiate LLM
+    log("🤖 Initializing language model...")
     try:
         # Instance creation
         llm = Llama(
@@ -161,19 +171,26 @@ def run_llm(
             verbose=False,
             min_p = MIN_P,
         )
+        log("✅ Language model loaded successfully")
     except Exception as e:
-        print(f"Error running instantiation the model: {e}")
+        log(f"❌ Error instantiating the model: {e}")
         return
     
-    for _, course in selected_scorecard_courses.iterrows():
+    total_courses = len(selected_scorecard_courses)
+    for idx, (_, course) in enumerate(selected_scorecard_courses.iterrows(), 1):
         pdf_json_path = course_to_json_path(course)
         pdf_json = load_pdf_json(pdf_json_path)
+
+        course_name = f"{course.get('Subject', '')} {course.get('Catalog Nbr', '')} {course.get('Term', '')} {course.get('Year', '')}"
+        log(f"\n📚 Processing course {idx}/{total_courses}: {course_name}")
+
         # Retrieve user prompt (contains likes, dislikes, comments etc.)
+        log("  📄 Loading evaluation comments...")
         user_prompt = load_user_prompt(llm_dir, pdf_json)
         if not user_prompt:
-            print("Could not load user prompt, skipping LLM analysis", file=sys.stderr)
+            log("  ❌ Could not load user prompt, skipping LLM analysis")
             return
-        
+
         # Messages for the LLM
         messages = [
             {"role": "system", "content": system_prompt},
@@ -189,26 +206,27 @@ def run_llm(
                 min_p=MIN_P,
                 stream=True,
             )
-            print(f"  ⏳ Generating LLM response for {pdf_json_path}")
+            log(f"  ⏳ Generating LLM insights for {course_name}...")
             full_response_text = []
-            # print LLM output as it is generated
+            # Collect LLM output as it is generated
             for chunk in stream:
                 # Get content from the 'delta' key in each chunk
                 text = chunk["choices"][0]["delta"].get("content", "")
                 if text:
                     full_response_text.append(text)
+                    # Still print to console for debugging
                     print(text, end="", flush=True)
 
             print() # print a line after streaming
 
             llm_response = "".join(full_response_text)
             pdf_json['llm_summary'] = llm_response
-            print("LLM response completed!")
+            log(f"  ✅ LLM response completed for {course_name}")
 
             # Write the complete, .json to the temporary directory
             with open(pdf_json_path, "w", encoding="utf-8") as out_f:
                 json.dump(pdf_json, out_f, indent=4)
-                print(f"LLM summary added to JSON and saved to temporary file: {pdf_json_path}")
-            
+                log(f"  💾 Saved LLM summary to {pdf_json_path}")
+
         except Exception as e:
-            print(f"Error occurred during LLM chat completion: {e}")
+            log(f"  ❌ Error occurred during LLM chat completion: {e}")

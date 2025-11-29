@@ -81,21 +81,26 @@ class Application:
         """
         Populate LLM insight fields for viable scorecards.
         A viable scorecard has a matching `csv_row` and existing
-        `./path/to/parsed_pdf.json`. 
+        `./path/to/parsed_pdf.json`.
         """
 
         if (self.include_llm_insights):
             print("🤖 Running LLM I/O")
-        
+
             from src.llm_loading_gui import LLMLoadingGUI
-        
+
             selected_courses = len(self.selected_scorecard_courses)
             selected_instructors = len(self.selected_scorecard_instructors)
-        
-       
+
+            # Create and show GUI with processing parameters
             llm_gui = LLMLoadingGUI(selected_courses, selected_instructors)
-            insights = llm_gui.show()  
-        
+            llm_gui.show(
+                gguf_path=self.paths['gguf_path'],
+                selected_scorecard_courses=self.selected_scorecard_courses,
+                llm_dir=self.paths['llm_prompt_dir'],
+                config=self.config
+            )
+
             print(" ✅ LLM Tasks Completed")
 
 
@@ -128,11 +133,11 @@ class Application:
 
 if __name__ == "__main__":
     try:
-        # Load config early for setup
+        # Load config early to setup default directories 
         config = utils.load_config()
         utils.verify_directories(config['paths'])
 
-        # First-run setup check
+        # First-run setup check for gguf, TinyTex, and ./resources/.setup_complete flag
         from src.first_run_setup import FirstRunSetup, DEFAULT_MODEL_URL
         from src.setup_wizard import run_setup_wizard
 
