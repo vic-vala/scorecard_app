@@ -25,7 +25,7 @@ namespace eval ttk::theme::azure-light {
             -disabledfg     "#737373"
             -disabledbg     "#ffffff"
             -selectfg       "#ffffff"
-            -selectbg       "#007fff"
+            -selectbg       "#8c1d40"
         }
 
         ttk::style layout TButton {
@@ -255,16 +255,21 @@ namespace eval ttk::theme::azure-light {
             ] -width 15 -sticky e
 
         # AccentButton
-        ttk::style configure Accent.TButton -padding {8 4 8 4} -width -10 -anchor center
+        ttk::style configure Accent.TButton -padding {8 4 8 4} -width -10 -anchor center -foreground $colors(-selectfg)
 
         ttk::style element create AccentButton.button image \
             [list $I(rect-accent) \
-            	{selected disabled} $I(rect-accent-hover) \
-                disabled $I(rect-accent-hover) \
+            	{selected disabled} $I(rect-basic) \
+                disabled $I(rect-basic) \
                 selected $I(rect-accent) \
                 pressed $I(rect-accent) \
                 active $I(rect-accent-hover) \
             ] -border 4 -sticky ewns
+
+        ttk::style map Accent.TButton -foreground \
+            [list pressed $colors(-selectfg) \
+                  active $colors(-selectfg) \
+                  disabled $colors(-disabledfg)]
 
         # Checkbutton
         ttk::style configure TCheckbutton -padding 4
