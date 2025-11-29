@@ -208,7 +208,7 @@ def open_config_editor(json_path: str) -> None:
 
     btn_bar = tk.Frame(root)
     btn_bar.pack(fill="x", padx=8, pady=8)
-    ttk.Button(btn_bar, text="Save", command=save_and_close).pack(
+    ttk.Button(btn_bar, text="Save", style="Accent.TButton", command=save_and_close).pack(
         side="right", padx=4
     )
     ttk.Button(btn_bar, text="Continue", command=root.destroy).pack(
