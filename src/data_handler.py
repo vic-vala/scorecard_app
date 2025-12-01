@@ -121,7 +121,52 @@ def compute_course_gpa(row_like: Mapping[str, Any], scale: Dict[str, float]) -> 
     if total_count == 0:
         return None
     return total_points / total_count
+    
+def add_outlier_columns(df, json_dir=None, csv_path=None, std_dev_threshold=2.0):
+    """
+    Compute statistical outliers and add columns to DataFrame.
+    """
+    if df.empty or csv_path is None:
+        return df
 
+    df_out = df.copy()
+
+    # Add outlier columns
+    df_out['_outlier_direction'] = ""
+    df_out['_outlier_types'] = ""
+    df_out['_outlier_magnitude'] = 0.0
+    df_out['_outlier_severity'] = 0.0
+
+    for idx, row in df.iterrows():
+        try:
+            # Get aggregate data for peer comparison
+            agg_data = aggregate_for_row(
+                comparison={'match_subject': 'true', 'match_catalog_number': 'hundred'},
+                row=row,
+                json_dir=json_dir,
+                csv_path=csv_path
+            )
+
+            # Detect outliers
+            outliers = compute_metrics.detect_statistical_outliers(row, agg_data, std_dev_threshold)
+
+            if outliers:
+                directions = set(o['direction'] for o in outliers)
+                outlier_direction = 'mixed' if len(directions) > 1 else list(directions)[0]
+
+                severity = compute_metrics.calculate_outlier_severity(outliers)
+
+                df_out.at[idx, '_outlier_direction'] = outlier_direction
+                df_out.at[idx, '_outlier_types'] = ','.join([o['type'] for o in outliers])
+                df_out.at[idx, '_outlier_magnitude'] = max([o['magnitude'] for o in outliers])
+                df_out.at[idx, '_outlier_severity'] = severity
+
+        except Exception:
+            
+            continue
+
+    return df_out
+    
 def describe_aggregate(
     comparison: Dict[str, Any],
     row: Mapping[str, Any],
