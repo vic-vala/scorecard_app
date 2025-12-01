@@ -62,6 +62,13 @@ class Application:
         unique_courses = data_handler.get_unique_courses(self.csv_path[0])
         instructors = data_handler.get_instructors(self.csv_path[0])
 
+        # Enhance courses with outlier detection
+        enhanced_courses = data_handler.add_outlier_direction_columns(
+            self.viable_scorecards,
+            self.paths['parsed_pdf_dir'],
+            self.csv_path[0],
+            std_dev_threshold=2.0
+            
         print("🖥️ Opening Selection GUI (Sessions / Courses / Instructors)")
         (
             self.selected_scorecard_courses,
@@ -69,6 +76,7 @@ class Application:
             self.selected_scorecard_instructors,
         ) = select_rows_gui.select_rows_gui_with_tabs(
             self.viable_scorecards,
+            enhanced_scorecards,
             unique_courses,
             instructors,
         )
