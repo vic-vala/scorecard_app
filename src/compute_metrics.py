@@ -277,7 +277,72 @@ def get_withdraw_metrics(
         'pct': pct,
         'delta': delta
     }
+    
+def detect_statistical_outliers(csv_row, aggregate_data, std_dev_threshold=2.0):
+    """
+    Detect statistical outliers.
+    """
+    outliers = []
 
+    # GPA Outlier Detection
+    try:
+        course_gpa = float(csv_row.get('GPA', 0))
+        agg_gpa = aggregate_data.get('gpa')
+        agg_std = aggregate_data.get('gpa_std', 0.0)
+
+        if agg_gpa is not None and agg_std > 0:
+            z_score = (course_gpa - agg_gpa) / agg_std
+            if abs(z_score) > std_dev_threshold:
+                outliers.append({
+                    'type': 'GPA',
+                    'direction': 'positive' if z_score > 0 else 'negative',
+                    'magnitude': abs(z_score)
+                })
+    except (ValueError, TypeError, ZeroDivisionError):
+        pass
+
+   
+    # Grade Distribution Outliers
+    try:
+        total_students = calculate_total_students(csv_row)
+        if total_students > 0:
+            high_grade_count = calculate_grade_count(csv_row, 'A+', 'A', 'A-', 'B+')
+            high_grade_rate = high_grade_count / total_students
+
+            grade_percentages = aggregate_data.get('grade_percentages', {})
+            agg_high_grade_rate = sum(grade_percentages.get(g, 0) for g in ['A+', 'A', 'A-', 'B+'])
+
+            if agg_high_grade_rate > 0:
+                std_err = (agg_high_grade_rate * (1 - agg_high_grade_rate) / total_students) ** 0.5
+                if std_err > 0:
+                    z_score = (high_grade_rate - agg_high_grade_rate) / std_err
+                    if abs(z_score) > std_dev_threshold:
+                        outliers.append({
+                            'type': 'HIGH_GRADE_RATE',
+                            'direction': 'positive' if z_score > 0 else 'negative',
+                            'magnitude': abs(z_score)
+                        })
+    except (ValueError, TypeError, ZeroDivisionError):
+        pass
+
+    return outliers
+
+def calculate_outlier_severity(outliers):
+    """Calculate overall severity score."""
+    if not outliers:
+        return 0.0
+
+    type_weights = {
+        'GPA': 3.0,
+        'HIGH_GRADE_RATE': 2.0,
+    }
+
+    total_severity = 0.0
+    for outlier in outliers:
+        weight = type_weights.get(outlier['type'], 1.0)
+        total_severity += outlier['magnitude'] * weight
+
+    return total_severity
 
 def get_quartile_metrics(agg_data: Dict[str, Any]) -> Dict[str, Any]:
     """
