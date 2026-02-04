@@ -132,11 +132,13 @@ def course_to_stem(course):
     """
     subject = _slug(course.get("Subject"))
     catalog = _slug(course.get("Catalog Nbr"))
+    
     instructor_last = _slug(
         course.get("Instructor Last")
         or course.get("Instructor_Last")
         or course.get("InstructorLast")
     )
+
     term = _slug(course.get("Term"))
     year = _slug(course.get("Year"))
 
@@ -166,6 +168,35 @@ def instructor_to_stem(course):
     )
 
     return f"{instructor_last}_{instructor_first}"
+
+def course_to_output_filename(course):
+    """
+    From a course row build the output filename with instructor first name
+        CSE_470_Maciejewski_Ross_Fall_2011_71428
+        Used soley for output scorecard filenames to differentiate instructors with same last name
+    """
+    subject = _slug(course.get("Subject"))
+    catalog = _slug(course.get("Catalog Nbr"))
+    instructor_last = _slug(
+        course.get("Instructor Last")
+        or course.get("Instructor_Last")
+        or course.get("InstructorLast")
+    )
+    instructor_first = _slug(
+        course.get("Instructor First")
+        or course.get("Instructor_First")
+        or course.get("InstructorFirst")
+    )
+    term = _slug(course.get("Term"))
+    year = _slug(course.get("Year"))
+    class_nbr = _slug(
+        course.get("Class Nbr")
+        or course.get("Course Nbr")
+        or course.get("Section")
+        or course.get("course_number")
+    )
+
+    return f"{subject}_{catalog}_{instructor_last}_{instructor_first}_{term}_{year}_{class_nbr}"
 
 def _parse_filename(filename: str):
     """

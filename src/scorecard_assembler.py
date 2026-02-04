@@ -4,7 +4,7 @@ import re
 import sys
 import pandas as pd
 from typing import Any, Dict, Mapping, Optional, List, Tuple
-from src.utils import course_to_json_path, course_to_stem, _is_true, instructor_to_stem
+from src.utils import course_to_json_path, course_to_stem, course_to_output_filename, _is_true, instructor_to_stem
 
 from pylatex import(
     Command,
@@ -564,12 +564,15 @@ def assemble_scorecard(
     # Load the pdf json representation
     pdf_json = load_pdf_json(course_to_json_path(course))
     
+    # Generate output filename with instructor first name (Used to differentiate instructors with same last name)
+    output_filename = course_to_output_filename(course)
+    
     # Generate the latex doc
     latex_doc = _ScorecardDoc(
         csv_row=course,
         pdf_json=pdf_json,
         grade_hist=histogram_full_path,
-        output_filename=histrogram_name,
+        output_filename=output_filename,
         agg_data=agg_data,
         config=config,
         short=short,
