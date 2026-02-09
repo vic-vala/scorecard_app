@@ -123,18 +123,7 @@ class _SelectionTab:
         ttk.Button(search_frame, text="Reset", command=self._reset_filter).pack(
             side=tk.LEFT
         )
-        if '_outlier_direction' in self.df.columns:
-        ttk.Separator(search_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
 
-        ttk.Label(search_frame, text="Outliers:").pack(side=tk.LEFT, padx=(0, 5))
-        self.outlier_var = tk.StringVar(value="All Courses")
-        outlier_combo = ttk.Combobox(search_frame, textvariable=self.outlier_var, state="readonly", width=14)
-        outlier_combo["values"] = ["All Courses", "📈 Positive", "📉 Negative", "📊 All Outliers", "⚪ Normal Only"]
-        outlier_combo.current(0)
-        outlier_combo.pack(side=tk.LEFT, padx=(0, 5))
-
-        ttk.Button(search_frame, text="Apply", command=self._apply_outlier_filter).pack(side=tk.LEFT)
-        
         # treeview
         tree_frame = ttk.Frame(self.frame)
         tree_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -177,56 +166,6 @@ class _SelectionTab:
 
     # filtering / tree management #################################
 
-    def _get_search_filtered_ids(self):
-    """Get IDs filtered by the current search criteria."""
-    if self.df is None or self.df.empty or not self.visible_cols:
-        return []
-
-    col = self.col_var.get()
-    pattern = self.search_var.get().strip().lower()
-    if not col or pattern == "":
-        return list(range(len(self.df)))
-
-    visible_ids = []
-    col_idx = self.df.columns.get_loc(col)
-    for i in range(len(self.df)):
-        value = self.df.iat[i, col_idx]
-        if pattern in str(value).lower():
-            visible_ids.append(i)
-    return visible_ids
-    
-    def _apply_outlier_filter(self):
-    """Apply outlier filter independently of search filter."""
-    if self.df is None or self.df.empty:
-        return
-
-    outlier_filter = self.outlier_var.get()
-
-    # First get search-filtered results
-    search_filtered_ids = self._get_search_filtered_ids()
-
-    # Then apply outlier filter
-    if outlier_filter != "All Courses":
-        filtered_ids = []
-        for row_id in search_filtered_ids:
-            row = self.df.iloc[row_id]
-            outlier_dir = row.get('_outlier_direction', '')
-
-            # FIXED: Use exact string values from the dropdown (with emojis)
-            if outlier_filter == "Positive" and outlier_dir in ['positive', 'mixed']:
-                filtered_ids.append(row_id)
-            elif outlier_filter == "Negative" and outlier_dir in ['negative', 'mixed']:
-                filtered_ids.append(row_id)
-            elif outlier_filter == "All Outliers" and outlier_dir != "":
-                filtered_ids.append(row_id)
-            elif outlier_filter == "Normal Only" and outlier_dir == "":
-                filtered_ids.append(row_id)
-
-        self._reload_tree(filtered_ids)
-    else:
-        # Show all courses (no outlier filter)
-        self._reload_tree(search_filtered_ids)
-        
     def _apply_filter(self):
         if self.df is None or self.df.empty or not self.visible_cols:
             self._reload_tree([])
@@ -243,34 +182,10 @@ class _SelectionTab:
                 value = self.df.iat[i, col_idx]
                 if pattern in str(value).lower():
                     visible_ids.append(i)
-        
-        if hasattr(self, 'outlier_var') and '_outlier_direction' in self.df.columns:
-        outlier_filter = self.outlier_var.get()
-        
-        if outlier_filter != "All Courses":
-            filtered_ids = []
-            for row_id in search_filtered_ids:
-                row = self.df.iloc[row_id]
-                outlier_dir = row.get('_outlier_direction', '')
-                
-                # Match the exact strings from the dropdown
-                if outlier_filter == "Positive" and outlier_dir in ['positive', 'mixed']:
-                    filtered_ids.append(row_id)
-                elif outlier_filter == "Negative" and outlier_dir in ['negative', 'mixed']:
-                    filtered_ids.append(row_id)
-                elif outlier_filter == "All Outliers" and outlier_dir != "":
-                    filtered_ids.append(row_id)
-                elif outlier_filter == "Normal Only" and outlier_dir == "":
-                    filtered_ids.append(row_id)
-            
-            self._reload_tree(filtered_ids)
-            return 
-        self._reload_tree(search_filtered_ids)
+        self._reload_tree(visible_ids)
 
     def _reset_filter(self):
         self.search_var.set("")
-        if hasattr(self, 'outlier_var'):
-            self.outlier_var.set("All Courses")
         if len(self.visible_cols) > 0:
             self.col_combo.current(0)
         if self.df is None or self.df.empty:
@@ -323,26 +238,10 @@ class _SelectionTab:
         for row_id in row_ids:
             row = self.df.iloc[row_id]
             check_char = "☑" if row_id in self.selected_row_ids else "☐"
-        
-        # Get base values from visible columns
-            base_values = [row[col] for col in self.visible_cols]
-            
-        # Add outlier indicator to the first column if outlier exists
-            if '_outlier_direction' in self.df.columns:
-                outlier_dir = row.get('_outlier_direction', '')
-                if outlier_dir and len(base_values) > 0:
-                    if outlier_dir == 'positive':
-                        base_values[0] = f"{base_values[0]}"
-                    elif outlier_dir == 'negative':
-                        base_values[0] = f"{base_values[0]}"
-                    elif outlier_dir == 'mixed':
-                        base_values[0] = f" {base_values[0]}"
-        
-        values = [check_char] + base_values
-        # use row_id as the item id so we can map back easily
-        self.tree.insert("", "end", iid=str(row_id), values=values)
-    
-    self._autosize_columns(row_ids)
+            values = [check_char] + [row[col] for col in self.visible_cols]
+            # use row_id as the item id so we can map back easily
+            self.tree.insert("", "end", iid=str(row_id), values=values)
+        self._autosize_columns(row_ids)
 
     # selection handling #################################
 

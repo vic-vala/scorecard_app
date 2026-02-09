@@ -4,6 +4,7 @@ import sys
 import re
 import math
 import shutil
+from datetime import datetime
 from typing import Any, Dict, Mapping, Optional, List, Tuple
 from src.resource_utils import get_resource_path, get_user_config_path
 
@@ -26,6 +27,43 @@ GRADE_COLS = [
     "EN", "EU", "I", "NR", "NR.1",
     "W", "X", "XE", "Y", "Z",
 ]
+
+def log_to_file(message: str, log_file: str = "application.log", timestamp: bool = True) -> None:
+    """
+    Append a message to a log file with optional timestamp.
+
+    This function is designed to work alongside UI logging callbacks
+
+    Args:
+        message (`str`): The message to log
+        log_file (`str`, optional): Name of log file. Defaults to "application.log"
+        timestamp (`bool`, optional): Whether to prepend timestamp. Defaults to True
+
+    Example:
+        >>> log_to_file("Starting LLM processing")
+        >>> log_to_file("Model loaded successfully", log_file="llm.log")
+    """
+    # Create logs directory if it doesn't exist
+    log_dir = os.path.join(os.getcwd(), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+
+    log_path = os.path.join(log_dir, log_file)
+
+    # Prepare log entry
+    if timestamp:
+        timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp_str}] {message}\n"
+    else:
+        log_entry = f"{message}\n"
+
+    # Append to log file
+    try:
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(log_entry)
+    except Exception as e:
+        # Fallback to stderr if file writing fails
+        print(f"Warning: Could not write to log file {log_path}: {e}", file=sys.stderr)
+
 
 def load_config(path=None):
     """
