@@ -74,6 +74,11 @@ def extract_pdf(raw_pdf_path, fi):
             pdf_text += page.get_text()
         pdf.close()
 
+        # Extract professor first name  
+        instructor_first_name_match = re.search(rf"([A-Za-z]+)\s({fi.professor})+", pdf_text)
+        if instructor_first_name_match:
+            pdf_json['eval_info']['instructor_first_name'] = instructor_first_name_match.group(1).strip()
+        
         # Extract course number
         course_no_match = re.search(r"(?:Course\s*No|Course\s*Number)\s*([A-Za-z0-9\-]+)", pdf_text, re.IGNORECASE)
         if course_no_match:
