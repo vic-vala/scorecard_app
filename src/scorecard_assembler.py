@@ -207,7 +207,8 @@ class _ScorecardDoc:
         course_code = f"{self.pdf_json['eval_info']['course_number']}"
         container.append(Command(cmd, [NoEscape(r'\CourseCode'), course_code]))
 
-        instructor = f"{self.pdf_json['eval_info']['professor']}"
+        # Instructor first and last name
+        instructor = f"{self.pdf_json['eval_info']['instructor_first_name']} {self.pdf_json['eval_info']['professor']}"                                                                       
         container.append(Command(cmd, [NoEscape(r'\Instructor'), instructor]))
 
         # Baseline Text
