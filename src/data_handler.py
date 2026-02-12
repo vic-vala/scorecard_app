@@ -78,6 +78,7 @@ def get_instructors(csv_path: str) -> pd.DataFrame:
     """
     returns a DataFrame of all unique instructors and how many course sessions they have
     """
+    # load CSV and compute unique instructor counts
     df = pd.read_csv(csv_path, dtype=str)
 
     cols = ["Instructor", "Instructor First", "Instructor Middle", "Instructor Last"]
@@ -95,6 +96,112 @@ def get_instructors(csv_path: str) -> pd.DataFrame:
     )
 
     return result
+
+
+def add_anomaly_risk_column(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add anomaly detection risk columns to a course sessions DataFrame.
+
+    This computes a z-score for each row's `GPA` against other courses in the
+    same `Subject` and the same 100-band (e.g., 400-499). It adds a `Risk` column:
+
+      - `Risk`: emoji dot (🔴 high, 🟡 medium, 🟢 low)
+
+    Rules:
+      - If there are fewer than 2 GPA values in the comparison group or GPA is
+        missing, mark as low risk (🟢).
+      - We interpret absolute z-scores as outliers; thresholds:
+          |z| >= 2.0 => High (🔴)
+          1.0 <= |z| < 2.0 => Medium (🟡)
+          |z| < 1.0 => Low (🟢)
+
+    Args:
+        df: DataFrame containing at least `Subject`, `Catalog Nbr`, and `GPA`.
+
+    Returns:
+        A new DataFrame with the added `Risk` column.
+    """
+    if df is None:
+        return df
+
+    if df.empty:
+        # Even if empty, add the Risk column for consistent UI
+        out = df.copy()
+        out["Risk"] = pd.Series(dtype=str)
+        return out
+
+    # Work on a copy to avoid mutating caller data
+    out = df.copy()
+
+    if "GPA" not in out.columns or "Catalog Nbr" not in out.columns or "Subject" not in out.columns:
+        # nothing to compute; ensure columns exist for consistent UI
+        out["Risk"] = "🟢"
+        return out
+
+    # numeric GPA
+    out["_GPA_num"] = pd.to_numeric(out["GPA"], errors="coerce")
+
+    def _catalog_int(val):
+        try:
+            s = str(val).strip()
+            # handle things like '436' or '436.0'
+            if "." in s:
+                s = s.split(".")[0]
+            return int(s)
+        except Exception:
+            return None
+
+    out["_catalog_int"] = out["Catalog Nbr"].apply(_catalog_int)
+
+    # Precompute groups: subject + hundred band -> list of GPAs
+    groups = {}
+    for _, r in out.iterrows():
+        subj = r.get("Subject")
+        cat = r.get("_catalog_int")
+        gpa = r.get("_GPA_num")
+        if subj is None or cat is None or pd.isna(gpa):
+            continue
+        band_low = (cat // 100) * 100
+        key = (subj, band_low)
+        groups.setdefault(key, []).append(gpa)
+
+    import math
+
+    def _compute_for_row(r):
+        subj = r.get("Subject")
+        cat = r.get("_catalog_int")
+        gpa = r.get("_GPA_num")
+        if subj is None or cat is None or pd.isna(gpa):
+            return "🟢"
+        band_low = (cat // 100) * 100
+        key = (subj, band_low)
+        vals = groups.get(key, [])
+        if len(vals) < 2:
+            return "🟢"
+        # population std (ddof=0) is fine here; ddof=1 also acceptable
+        mean = float(sum(vals)) / len(vals)
+        # compute std
+        var = sum((v - mean) ** 2 for v in vals) / len(vals)
+        std = math.sqrt(var) if var >= 0 else 0.0
+        if std == 0 or math.isnan(std):
+            return "🟢"
+        z = (gpa - mean) / std
+        # negative deviations indicate lower-than-average GPA (risk)
+        # but also flag high outliers as risky
+        if abs(z) >= 2.0:
+            return "🔴"
+        elif abs(z) >= 1.0:
+            return "🟡"
+        else:
+            return "🟢"
+
+    computed = out.apply(_compute_for_row, axis=1)
+    out["Risk"] = computed.tolist()
+
+    # cleanup temp cols used for computation
+    out.drop(columns=["_GPA_num", "_catalog_int"], inplace=True, errors="ignore")
+
+    return out
 
 def compute_course_gpa(row_like: Mapping[str, Any], scale: Dict[str, float]) -> Optional[float]:
     """

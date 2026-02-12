@@ -214,6 +214,16 @@ class _ScorecardDoc:
         # Baseline Text
         container.append(Command(cmd, [NoEscape(r'\BaselineText'), self.baseline_text]))
 
+        # Risk level from anomaly detection
+        risk_emoji = self.csv_row.get('Risk', '🟢')
+        risk_mapping = {
+            '🔴': 'Significant Outlier',
+            '🟡': 'Moderate Outlier', 
+            '🟢': 'Normal Range'
+        }
+        risk_text = risk_mapping.get(risk_emoji, 'Normal Range')
+        container.append(Command(cmd, [NoEscape(r'\RiskLevel'), risk_text]))
+
         # Pulled from csv row
         course_size = int(self.csv_row['Class Size'])
         container.append(Command(cmd, [NoEscape(r'\CourseSize'), str(course_size)]))

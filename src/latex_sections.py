@@ -9,8 +9,7 @@ def get_page_title_template():
     return r'''
 \ifShowHdrTitle
 	\begin{center}
-		{\PageTitle}\\
-		{\PageSubtitle}
+		{\PageTitle}
 	\end{center}
 \fi
 '''
@@ -127,7 +126,7 @@ def get_helper_commands_template():
     return r'''
 \newcommand{\CourseHeader}{\CourseName\ (\CourseYear\ \CourseTerm) \CourseCode\ \textendash\ \Instructor}
 
-\newcommand{\PageTitle}{\LARGE\bfseries\textcolor{accent}{\CourseHeader}}
+\newcommand{\PageTitle}{\LARGE\bfseries\textcolor{accent}{\CourseHeader \textbullet\ \RiskLevel}}
 
 \newcommand{\PageSubtitle}{\footnotesize\textcolor{neu}{Compared Against: \BaselineText}}
 

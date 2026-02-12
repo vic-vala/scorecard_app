@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from src import data_handler
 import tkinter.font as tkfont
 import pandas as pd
 from src.theme import apply_theme
@@ -330,7 +331,13 @@ def select_rows_gui(df: pd.DataFrame, instruction_text: str, title_text: str) ->
     notebook = ttk.Notebook(root)
     notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-    tab = _SelectionTab(notebook, df, instruction_text, title_text)
+    # apply risk only for course sessions (single-tab mode assumed to be sessions)
+    try:
+        df_with_risk = data_handler.add_anomaly_risk_column(df)
+    except Exception:
+        df_with_risk = df
+
+    tab = _SelectionTab(notebook, df_with_risk, instruction_text, title_text)
 
     result = {"df": None}
 
@@ -387,6 +394,12 @@ def select_rows_gui_with_tabs(
 
     notebook = ttk.Notebook(root)
     notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+    # compute risk only for the session scorecards
+    try:
+        scorecard_sessions_df = data_handler.add_anomaly_risk_column(scorecard_sessions_df)
+    except Exception:
+        pass
 
     session_tab = _SelectionTab(
         notebook,

@@ -1,7 +1,7 @@
 {
     "paths": {
         "pdf_source": "./input_files/pdfs",
-        "excel_source": "./input_files/excel/placeholder_excelname.xlsx",
+        "excel_source": "C:\\Users\\kevin\\Downloads\\input_files\\excel\\placeholder_excelname.xlsx",
         "csv_dir": "./temporary_files/csv",
         "tex_dir": "./temporary_files/tex",
         "parsed_pdf_dir": "./temporary_files/json",
@@ -38,9 +38,9 @@
         "course_num": "71428"
     },
     "comparison": {
-        "match_term": "false",
-        "match_year": "false",
-        "match_subject": "false",
+        "match_term": "true",
+        "match_year": "true",
+        "match_subject": "true",
         "match_catalog_number": "hundred"
     }
 }
