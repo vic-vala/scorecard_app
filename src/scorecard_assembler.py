@@ -9,6 +9,7 @@ from pylatex import(
     NoEscape,
 )
 from src.scorecard_doc import _ScorecardDoc
+from src.consolidated_doc import _ConsolidatedDoc
 from src.utils import course_to_json_path, course_to_stem, course_to_output_filename, instructor_to_stem
 from src.data_handler import aggregate_for_row, get_courses_by_instructor
 
@@ -30,7 +31,8 @@ def assemble_scorecard(
         config,
         csv_path,
         short:bool = False,
-        newcommand:bool = True
+        newcommand:bool = True,
+        consolidated:bool = False,
     ):
     """
     Generates the .tex for the scorecard & saves it as a pdf.
@@ -71,15 +73,30 @@ def assemble_scorecard(
     output_filename = course_to_output_filename(course)
 
     # Generate the latex doc
-    latex_doc = _ScorecardDoc(
-        csv_row=course,
-        pdf_json=pdf_json,
-        grade_hist=histogram_full_path,
-        output_filename=output_filename,
-        agg_data=agg_data,
-        config=config,
-        short=short,
-        newcommand=newcommand,
+    if consolidated:
+        boxplot_path = os.path.abspath(os.path.join(paths.get('resources_dir', 'resources'), 'boxplot.png'))
+        if isinstance(boxplot_path, str):
+            boxplot_path = boxplot_path.replace('\\', '/')
+        latex_doc = _ConsolidatedDoc(
+            csv_row=course,
+            pdf_json=pdf_json,
+            grade_hist=histogram_full_path,
+            output_filename=output_filename,
+            agg_data=agg_data,
+            config=config,
+            newcommand=newcommand,
+            boxplot_path=boxplot_path,
+        )
+    else:
+        latex_doc = _ScorecardDoc(
+            csv_row=course,
+            pdf_json=pdf_json,
+            grade_hist=histogram_full_path,
+            output_filename=output_filename,
+            agg_data=agg_data,
+            config=config,
+            short=short,
+            newcommand=newcommand,
         )
 
     latex_doc.doc_setup()
