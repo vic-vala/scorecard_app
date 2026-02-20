@@ -368,7 +368,11 @@ class FirstRunSetup:
                         'pdfcol',
                         'listings',
                         'listingsutf8',
-                        'xstring'       
+                        'xstring',
+                        'colortbl',
+                        'multirow',
+                        'ragged2e',
+                        'amsmath'
                     ]
 
                     for package in required_packages:
