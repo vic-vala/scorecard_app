@@ -372,7 +372,8 @@ class FirstRunSetup:
                         'colortbl',
                         'multirow',
                         'ragged2e',
-                        'amsmath'
+                        'amsmath',
+                        'grfext'
                     ]
 
                     for package in required_packages:
