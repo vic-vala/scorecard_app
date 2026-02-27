@@ -24,7 +24,7 @@ def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=1.5)
     boxprops = dict(facecolor=box_color, color=line_color, linewidth=1.5)
     whiskerprops = dict(color=line_color, linewidth=1.5)
     capprops = dict(color=line_color, linewidth=1.5)
-    medianprops = dict(color=line_color, linewidth=1.5)
+    medianprops = dict(color="#000000", linewidth=2.5)
 
     # Draw the boxplot
     ax.bxp(stats, vert=False, patch_artist=True, showfliers=False,
@@ -42,6 +42,13 @@ def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=1.5)
     # Plot point x
     ax.scatter(x, 1, color=dot_color, edgecolors='#4A6B9C', 
                s=150, zorder=3, linewidths=1.5)
+
+
+    # Median text 
+    ax.text(median, 1.15, f"{median:.1f}", 
+            ha='center', va='center', 
+            fontsize=10, fontweight='bold', color='#4A6B9C')
+
 
     # Padding
     padding = (max - min) * 0.05
