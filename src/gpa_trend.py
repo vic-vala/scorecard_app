@@ -16,7 +16,7 @@ def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=1.5)
         'q3': q3,
         'whishi': max
     }]
-
+    
     # Styling
     box_color = '#D0E2FF'     
     line_color = '#789BE4'    
