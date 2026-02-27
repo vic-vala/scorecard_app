@@ -346,3 +346,22 @@ def _parse_catalog_int(value: Any) -> Optional[int]:
         return int(m.group(0))
     except ValueError:
         return None
+    
+def _safe_int(val) -> int | None:
+    """Returns int(val) or None if val is None, or if int(val) results in a Type or Value error"""
+    if val is None:
+        return None
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_float(val) -> float | None:
+    """Returns float(val) or None if val is None, or if float(val) results in a Type or Value error"""
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None

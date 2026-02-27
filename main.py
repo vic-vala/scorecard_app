@@ -17,6 +17,7 @@ from src import (
     config_gui,
     data_handler,
     select_rows_gui,
+    csv_enricher,
 )
 
 class Application:
@@ -57,6 +58,14 @@ class Application:
     def find_viable_scorecards(self):
         print("🔗 Finding viable courses for scorecard creation")
         self.viable_scorecards = data_handler.viable_scorecards(self.paths['parsed_pdf_dir'], self.csv_path[0])
+    
+    def enrich_csv(self):
+        print("📎 Enriching CSV with evaluation data")
+        csv_enricher.enrich_csv_with_evals(
+            csv_path=self.csv_path[0],
+            json_dir=self.paths['parsed_pdf_dir'],
+            config=self.config,
+        )
 
     def selection_gui(self):
         unique_courses = data_handler.get_unique_courses(self.csv_path[0])
@@ -172,6 +181,8 @@ if __name__ == "__main__":
 
         # Use CSV/PDF overlap to find viable scorecards
         app.find_viable_scorecards()
+        # Integrate PDF data into the CSV where possible
+        app.enrich_csv()
 
         app.selection_gui()
         app.gather_llm_insights()
