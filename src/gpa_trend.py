@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=0.5):
+def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=1.5):
     
     # Choose size and background
     fig, ax = plt.subplots(figsize=(width, height))
@@ -46,7 +46,7 @@ def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=0.5)
     # Padding
     padding = (max - min) * 0.05
     ax.set_xlim(min - padding, max + padding)
-    
+
     ax.axis('off')  # Hide labels
 
     # Save the image exactly as requested
