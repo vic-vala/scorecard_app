@@ -12,5 +12,6 @@ CRITICAL REQUIREMENTS:
 - Be specific about what students actually said in each category
 - Keep the three-section structure exactly as shown
 - Keep the LaTeX bold face formatting command, do not replace with markdown styling
+- Do not default to mixed tone, make sure to use reasoning steps.
 
 FREE RESPONSE COMMENTS
