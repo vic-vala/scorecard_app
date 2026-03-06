@@ -110,7 +110,7 @@ def get_helper_commands():
         \begin{minipage}[c]{\dimexpr\linewidth-2\tabcolsep\relax}%
         \vspace{4pt}%
         \centering%
-        \fbox{\includegraphics[width=\linewidth]{coursehistory_#1.png}}%
+        \includegraphics[width=\linewidth]{coursehistory_#1.png}%
         \vspace{4pt}%
         \end{minipage}%
     } \\
