@@ -1,11 +1,12 @@
 """
 LaTeX template sections for the instructor-level consolidated scorecard.
-Based on prof.tex — the tabularx balanced-scorecard design with per-course rows.
+Based on prof3.tex — xltabular layout with per-course detail rows
+(histogram + AI summary) and course-history rows between course groups.
 """
 
 
 def get_color_definitions():
-    """Color palette (shared with consolidated_tex)."""
+    """Color palette (unchanged from previous version)."""
     return r'''
 \definecolor{catGreen}{HTML}{C6DEA7}%
 \definecolor{catTeal}{HTML}{B3E1D4}%
@@ -25,9 +26,9 @@ def get_color_definitions():
 '''
 
 
-def get_helper_commands(boxplot_path):
-    """AutoD, spark, rules, column types, courserow macro."""
-    return (r'''
+def get_helper_commands():
+    """AutoD, spark, rules, column types, courserow macro with detail sub-row, coursehistoryrow macro."""
+    return r'''
 \newcommand{\autoD}[1]{%
     \IfStrEq{#1}{0}{\textcolor{neu}{#1}}{%
     \IfStrEq{#1}{0\%}{\textcolor{neu}{#1}}{%
@@ -42,7 +43,8 @@ def get_helper_commands(boxplot_path):
     }}}}}}}}}%
 }%
 %
-\newcommand{\spark}{\includegraphics[height=1.2em]{''' + boxplot_path + r'''}}%
+% --- Sparkline placeholder (per-course) ---
+\newcommand{\spark}[1]{\smash{\raisebox{-0.25\height}{\includegraphics[height=0.4cm,width=6cm]{boxplot_#1.png}}}}%
 %
 \newcommand{\thinrule}{%
     \arrayrulecolor{ruleGray}%
@@ -56,9 +58,10 @@ def get_helper_commands(boxplot_path):
 \newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}%
 \newcolumntype{R}[1]{>{\raggedleft\arraybackslash}m{#1}}%
 %
-% --- Course-row macro (auto-alternating shading) ---
+% --- Course-row macro (data row + detail row with histogram + AI summary) ---
 \newcounter{courserowcnt}%
 \setcounter{courserowcnt}{0}%
+%
 \newcommand{\courserow}[1]{%
     \stepcounter{courserowcnt}%
     \ifodd\value{courserowcnt}\else\rowcolor{rowBlueAlt}\fi%
@@ -71,16 +74,49 @@ def get_helper_commands(boxplot_path):
     \autoD{\csname Course#1OverallDelta\endcsname} &
     \csname Course#1GPA\endcsname &
     \autoD{\csname Course#1GPADelta\endcsname} &
-    \spark &
+    \multicolumn{3}{c}{\spark{#1}} &
     \csname Course#1Qone\endcsname &
     \autoD{\csname Course#1QoneDelta\endcsname} &
     \csname Course#1Median\endcsname &
     \autoD{\csname Course#1MedianDelta\endcsname} &
     \csname Course#1Qthree\endcsname &
-    \autoD{\csname Course#1QthreeDelta\endcsname} \\
+    \autoD{\csname Course#1QthreeDelta\endcsname} \\*
+    \noalign{\penalty10000}%
+    % --- Detail row: histogram + AI overview ---
+    \ifodd\value{courserowcnt}\else\rowcolor{rowBlueAlt}\fi%
+    \multicolumn{18}{@{\hspace{\tabcolsep}}l@{\hspace{\tabcolsep}}}{%
+        \begin{minipage}[t]{\dimexpr\linewidth-2\tabcolsep\relax}%
+        \vspace{1pt}%
+        \noindent%
+        \begin{minipage}[t]{0.20\linewidth}%
+            \vspace{0pt}%
+            \includegraphics[width=\linewidth]{histogram_#1.png}%
+        \end{minipage}%
+        \hfill%
+        \begin{minipage}[t]{0.76\linewidth}%
+            \vspace{0pt}%
+            \rmfamily\scriptsize\RaggedRight%
+            \csname Course#1AISummary\endcsname%
+        \end{minipage}%
+        \vspace{1pt}%
+        \end{minipage}%
+    } \\
     \thinrule%
 }%
-''')
+%
+% --- Course history row macro ---
+\newcommand{\coursehistoryrow}[1]{%
+    \multicolumn{18}{@{\hspace{\tabcolsep}}c@{\hspace{\tabcolsep}}}{%
+        \begin{minipage}[c]{\dimexpr\linewidth-2\tabcolsep\relax}%
+        \vspace{4pt}%
+        \centering%
+        \fbox{\includegraphics[width=\linewidth]{coursehistory_#1.png}}%
+        \vspace{4pt}%
+        \end{minipage}%
+    } \\
+    \thinrule%
+}%
+'''
 
 
 def get_title_section():
@@ -95,7 +131,7 @@ def get_title_section():
 
 
 def get_aggregate_kpi_table():
-    """Two-column aggregate KPI dashboard."""
+    """Two-column aggregate KPI dashboard (unchanged)."""
     return r'''
 {%
 \sffamily\small%
@@ -165,58 +201,13 @@ Median &
 \thickrule%
 \end{tabularx}%
 }% end group
-'''
-
-
-def get_grade_and_summary_section():
-    """Grade distribution table + AI summary side-by-side."""
-    return r'''
-\par\vspace{6pt}%
-\noindent%
-\begin{minipage}[t]{0.15\textwidth}%
-\sffamily\small%
-\fboxsep=3pt%
-\noindent\colorbox{headerBg}{%
-    \parbox[c]{\dimexpr\linewidth-2\fboxsep\relax}{%
-        \textcolor{headerFg}{\bfseries\footnotesize Grades}%
-    }%
-}\par\vspace{3pt}%
-\renewcommand{\arraystretch}{1.25}%
-\arrayrulecolor{ruleGray}%
-{\footnotesize%
-\begin{tabular}{@{} l r r @{}}%
-    \toprule%
-    & \textbf{\%} & $\boldsymbol{\Delta}$ \\%
-    \midrule%
-    \rowcolor{rowBlueAlt} A & \AggGradeAPct & \autoD{\AggGradeADelta} \\%
-    B & \AggGradeBPct & \autoD{\AggGradeBDelta} \\%
-    \rowcolor{rowBlueAlt} C & \AggGradeCPct & \autoD{\AggGradeCDelta} \\%
-    D & \AggGradeDPct & \autoD{\AggGradeDDelta} \\%
-    \rowcolor{rowBlueAlt} E & \AggGradeEPct & \autoD{\AggGradeEDelta} \\%
-    \bottomrule%
-\end{tabular}%
-}%
-\end{minipage}%
-\hfill%
-\begin{minipage}[t]{0.83\textwidth}%
-\sffamily\small%
-\fboxsep=3pt%
-\noindent\colorbox{headerBg}{%
-    \parbox[c]{\dimexpr\linewidth-2\fboxsep\relax}{%
-        \textcolor{headerFg}{\bfseries\footnotesize AI Instructor Summary}%
-    }%
-}\par\vspace{3pt}%
-{\rmfamily\small%
-\RaggedRight%
-\LLMInstructorSummary%
-}%
-\end{minipage}%
+%
 \par\vspace{6pt}%
 '''
 
 
 def get_per_course_table_header():
-    """Opening of the per-course table (header row). Body rows added via \\courserow."""
+    """Opening of the per-course xltabular (18 columns with spacers around Trend)."""
     return r'''
 {%
 \sffamily\footnotesize%
@@ -227,24 +218,27 @@ def get_per_course_table_header():
 %
 \setcounter{courserowcnt}{0}%
 \noindent%
-\begin{tabularx}{\textwidth}{%
-    l%
-    >{\raggedright\arraybackslash}X%
-    r%
-    r%
-    r%
-    r%
-    r%
-    r%
-    r%
-    C{1.8cm}%
-    r%
-    r%
-    r%
-    r%
-    r%
-    r%
+\begin{xltabular}{\textwidth}{%
+    l%              Course
+    l%              Term
+    l%              Code
+    l%              Size
+    l%              Resp
+    l%              Eval
+    l%              Δ Eval
+    l%              GPA
+    l%              Δ GPA
+    X%              (spacer)
+    C{1.8cm}%       Trend (centered)
+    X%              (spacer)
+    r%              Q1
+    r%              Δ
+    r%              Med
+    r%              Δ
+    r%              Q3
+    r%              Δ
 }%
+% --- Header (first page) ---
 \thickrule%
 \rowcolor{headerBg}%
 \textcolor{headerFg}{\textbf{Course}} &
@@ -256,7 +250,7 @@ def get_per_course_table_header():
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
 \textcolor{headerFg}{\textbf{GPA}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\textcolor{headerFg}{\textbf{Trend}} &
+\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{Trend}}} &
 \textcolor{headerFg}{\textbf{Q1}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
 \textcolor{headerFg}{\textbf{Med}} &
@@ -264,13 +258,40 @@ def get_per_course_table_header():
 \textcolor{headerFg}{\textbf{Q3}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} \\
 \thickrule%
+\endfirsthead%
+% --- Header (continuation pages) ---
+\thickrule%
+\rowcolor{headerBg}%
+\textcolor{headerFg}{\textbf{Course}} &
+\textcolor{headerFg}{\textbf{Term}} &
+\textcolor{headerFg}{\textbf{Code}} &
+\textcolor{headerFg}{\textbf{Size}} &
+\textcolor{headerFg}{\textbf{Resp}} &
+\textcolor{headerFg}{\textbf{Eval}} &
+\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
+\textcolor{headerFg}{\textbf{GPA}} &
+\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
+\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{Trend}}} &
+\textcolor{headerFg}{\textbf{Q1}} &
+\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
+\textcolor{headerFg}{\textbf{Med}} &
+\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
+\textcolor{headerFg}{\textbf{Q3}} &
+\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} \\
+\thickrule%
+\endhead%
+% --- Footer (continuation pages) ---
+\thickrule%
+\endfoot%
+% --- Footer (last page) ---
+\thickrule%
+\endlastfoot%
 '''
 
 
 def get_per_course_table_footer():
-    """Closing of the per-course table."""
+    """Closing of the per-course xltabular."""
     return r'''
-\thickrule%
-\end{tabularx}%
+\end{xltabular}%
 }% end group
 '''

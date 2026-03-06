@@ -1,11 +1,12 @@
 """
-Document class for the instructor-level consolidated scorecard layout.
-Generates the prof.tex-style tabular scorecard from instructor course data.
+Document class for the per-instructor tabular scorecard layout.
 """
 
 import json
 import os
+import re
 import string
+from itertools import groupby
 from typing import Any, Dict, List, Mapping, Optional
 
 from pylatex import Command, Document, NoEscape, Package
@@ -15,6 +16,7 @@ from . import compute_metrics
 from .utils import (
     GRADE_COLS,
     _is_true,
+    _parse_catalog_int,
     _safe_float,
     _safe_int,
     course_to_json_path,
@@ -46,9 +48,8 @@ def _grade_ordinal_delta(individual_grade: Optional[str], baseline_grade: Option
 
 
 def _latex_safe(val: Any) -> str:
-    """Make a value safe for LaTeX (escape %, handle minus signs)."""
+    """Make a value safe for LaTeX."""
     s = str(val) if val is not None else "N/A"
-    # Replace bare minus with LaTeX {-} for proper rendering in commands
     return s
 
 
@@ -64,21 +65,32 @@ def _delta_pct_str(individual: float, baseline: float) -> str:
     return f"{sign}{delta:.0f}\\%"
 
 
+def _course_sort_key(cm: Dict[str, Any]):
+    """Sort key: subject alpha, then catalog number numeric, then term chronological."""
+    name = cm.get("name", "")
+    parts = name.split()
+    subject = parts[0] if parts else ""
+    catalog_str = parts[1] if len(parts) > 1 else "0"
+    catalog_num = _parse_catalog_int(catalog_str) or 0
+    return (subject, catalog_num, cm.get("term", ""))
+
+
 class _InstructorConsolidatedDoc:
     """
-    Builds the instructor-level consolidated scorecard PDF.
+    Builds the instructor-level consolidated scorecard PDF (prof3.tex layout).
 
-    Workflow:
-        1. Receives instructor_courses DataFrame (all courses for this instructor)
-        2. For each course: loads JSON, computes per-course metrics + baseline
-        3. Aggregates instructor-level KPIs
-        4. Emits LaTeX commands and body sections
+    Changes from previous version:
+        - No per-instructor grade table / AI summary section
+        - Per-course detail rows with histogram + AI summary placeholders
+        - Courses sorted by department then catalog number
+        - Course history rows inserted before each unique course group
+        - Uses xltabular for multi-page support
     """
 
     # Letters used as per-course prefixes in LaTeX commands
     PREFIXES = list(string.ascii_uppercase) + [
         f"{a}{b}" for a in string.ascii_uppercase for b in string.ascii_uppercase
-    ]  # A-Z, then AA-ZZ (702 total, way more than needed)
+    ]
 
     def __init__(
         self,
@@ -101,6 +113,12 @@ class _InstructorConsolidatedDoc:
         self.per_course_metrics: List[Dict[str, Any]] = []
         self.agg: Dict[str, Any] = {}
 
+        # Built in _compute_all(): ordered list of (group_key, [indices into per_course_metrics])
+        # group_key = "SUBJECT CATALOG" e.g. "CSE 691"
+        self.course_groups: List[tuple] = []
+        # Maps group index -> history prefix label (sequential: A, B, C, ...)
+        self.history_prefixes: List[str] = []
+
         self._compute_all()
 
     # ------------------------------------------------------------------ #
@@ -112,23 +130,35 @@ class _InstructorConsolidatedDoc:
         per_course = []
 
         for _, course in self.instructor_courses.iterrows():
-            # Baseline for this specific course
             agg_data = aggregate_for_row(
                 comparison=self.config["comparison"],
                 row=course,
                 json_dir=self.paths["parsed_pdf_dir"],
                 csv_path=self.csv_path,
             )
-
-            # Load parsed PDF JSON (may be None if no eval)
             pdf_json = self._load_json(course)
-
-            # Per-course metrics dict
             cm = self._compute_course_metrics(course, pdf_json, agg_data)
             per_course.append(cm)
 
+        # Sort by subject then catalog number
+        per_course.sort(key=_course_sort_key)
+
         self.per_course_metrics = per_course
         self.agg = self._compute_instructor_agg(per_course)
+
+        # Build course groups (for history rows)
+        self.course_groups = []
+        history_idx = 0
+        for group_key, group_iter in groupby(
+            enumerate(per_course), key=lambda x: x[1]["name"]
+        ):
+            indices = [i for i, _ in group_iter]
+            self.course_groups.append((group_key, indices))
+
+        # Assign history prefixes (sequential A, B, C, ...)
+        self.history_prefixes = [
+            self.PREFIXES[i] for i in range(len(self.course_groups))
+        ]
 
     def _load_json(self, course) -> Optional[Dict]:
         path = course_to_json_path(course)
@@ -161,6 +191,7 @@ class _InstructorConsolidatedDoc:
         avg1 = avg2 = overall = None
         resp_rate_str = "N/A"
         resp_count = 0
+        ai_summary = "AI summary placeholder."
 
         if has_eval:
             info = pdf_json.get("eval_info", {})
@@ -170,6 +201,8 @@ class _InstructorConsolidatedDoc:
                 overall = round((avg1 + avg2) / 2, 2)
             resp_rate_str = str(info.get("response_rate", "N/A"))
             resp_count = _safe_int(info.get("response_count")) or 0
+            # AI summary from JSON if present
+            ai_summary = pdf_json.get("ai_summary", ai_summary)
 
         # Overall delta
         overall_delta = "N/A"
@@ -186,11 +219,10 @@ class _InstructorConsolidatedDoc:
 
         # Quartiles (individual course)
         median = compute_metrics.calculate_median_grade(course) or "N/A"
-        # For Q1/Q3 of individual course, replicate percentile logic
-        q1 = self._percentile_grade(course, 0.75)  # Q1 = 75th from top
-        q3 = self._percentile_grade(course, 0.25)  # Q3 = 25th from top
+        q1 = self._percentile_grade(course, 0.75)
+        q3 = self._percentile_grade(course, 0.25)
 
-        # Quartile deltas (ordinal vs baseline)
+        # Quartile deltas
         bl_q1 = agg_data.get("q1_grade")
         bl_median = agg_data.get("median_grade")
         bl_q3 = agg_data.get("q3_grade")
@@ -217,6 +249,7 @@ class _InstructorConsolidatedDoc:
             "avg2": avg2,
             "has_eval": has_eval,
             "class_size": class_size,
+            "ai_summary": ai_summary,
             # Keep agg_data ref for grade distribution
             "agg_data": agg_data,
             "course": course,
@@ -252,15 +285,11 @@ class _InstructorConsolidatedDoc:
         courses_with_eval = [c for c in per_course if c["has_eval"]]
         all_courses = per_course
 
-        # Term range
         terms = [c["term"] for c in all_courses if c["term"]]
-        # Unique courses
         unique_names = set(c["name"] for c in all_courses)
-
         total_enrollment = sum(c["size"] for c in all_courses)
         total_sessions = len(all_courses)
 
-        # Averages (only over courses with eval data)
         def _mean(values):
             valid = [v for v in values if v is not None]
             return round(sum(valid) / len(valid), 2) if valid else None
@@ -270,12 +299,11 @@ class _InstructorConsolidatedDoc:
         avg_overall = round((avg_avg1 + avg_avg2) / 2, 2) if avg_avg1 and avg_avg2 else None
         avg_gpa = _mean([c["gpa"] for c in all_courses])
 
-        # Response rate: average of numeric response rates
+        # Response rate
         resp_rates = []
         for c in courses_with_eval:
             rr = c["resp_rate"]
             try:
-                # Parse "0.7045" or "70%" etc.
                 rr_str = str(rr).replace("%", "").strip()
                 rr_val = float(rr_str)
                 if rr_val <= 1:
@@ -285,7 +313,7 @@ class _InstructorConsolidatedDoc:
                 continue
         avg_resp_rate = round(sum(resp_rates) / len(resp_rates), 0) if resp_rates else None
 
-        # Aggregate quartiles and median from combined grade distribution
+        # Aggregate quartiles from combined grade distribution
         combined_grades = {g: 0 for g in GRADE_COLS}
         for c in all_courses:
             course = c["course"]
@@ -312,8 +340,7 @@ class _InstructorConsolidatedDoc:
         agg_median = _combined_percentile(0.50)
         agg_q3 = _combined_percentile(0.25)
 
-        # Grade distribution percentages (instructor's combined)
-        grade_pcts = {}
+        # Grade distribution percentages
         grade_mapping = {
             "A": ["A+", "A", "A-"],
             "B": ["B+", "B", "B-"],
@@ -321,12 +348,12 @@ class _InstructorConsolidatedDoc:
             "D": ["D"],
             "E": ["E"],
         }
+        grade_pcts = {}
         for letter, keys in grade_mapping.items():
             count = sum(combined_grades.get(k, 0) for k in keys)
             grade_pcts[letter] = count / total_grades if total_grades > 0 else 0.0
 
-        # Compute baseline aggregates for delta computation
-        # Average the per-course baselines (weighted would be better but this is simpler)
+        # Baseline aggregates
         bl_gpas = [_safe_float(c["agg_data"].get("gpa")) for c in all_courses]
         bl_gpa = _mean(bl_gpas)
 
@@ -336,17 +363,10 @@ class _InstructorConsolidatedDoc:
         bl_avg2 = _mean(bl_avg2s)
         bl_overall = round((bl_avg1 + bl_avg2) / 2, 2) if bl_avg1 and bl_avg2 else None
 
-        # Baseline response rate (from JSON agg data)
-        # Not tracked in current agg_data, leave as N/A
-        bl_resp_rate = None
-
-        # Baseline quartiles: average the baselines (use first baseline as representative)
-        # For simplicity, use the combined baseline from the largest matching set
         bl_q1 = all_courses[0]["agg_data"].get("q1_grade") if all_courses else None
         bl_median = all_courses[0]["agg_data"].get("median_grade") if all_courses else None
         bl_q3 = all_courses[0]["agg_data"].get("q3_grade") if all_courses else None
 
-        # Baseline grade percentages (average across per-course baselines)
         bl_grade_pcts = {}
         for letter, keys in grade_mapping.items():
             pct_sum = 0.0
@@ -357,14 +377,12 @@ class _InstructorConsolidatedDoc:
                 count += 1
             bl_grade_pcts[letter] = pct_sum / count if count > 0 else 0.0
 
-        # Compute deltas
         def _num_delta(ind, bl):
             if ind is None or bl is None:
                 return "N/A"
             d = ind - bl
             return f"{d:+.2f}" if d != 0 else "0"
 
-        # Baseline text from comparison config
         baseline_text = self._build_baseline_text()
 
         return {
@@ -374,27 +392,22 @@ class _InstructorConsolidatedDoc:
             "total_sessions": total_sessions,
             "total_enrollment": total_enrollment,
             "baseline_text": baseline_text,
-            # Eval aggregates
             "overall": avg_overall,
             "overall_delta": _num_delta(avg_overall, bl_overall),
             "avg1": avg_avg1,
             "avg1_delta": _num_delta(avg_avg1, bl_avg1),
             "avg2": avg_avg2,
             "avg2_delta": _num_delta(avg_avg2, bl_avg2),
-            # GPA
             "gpa": avg_gpa,
             "gpa_delta": _num_delta(avg_gpa, bl_gpa),
-            # Quartiles
             "q1": agg_q1 or "N/A",
             "q1_delta": _grade_ordinal_delta(agg_q1, bl_q1),
             "median": agg_median or "N/A",
             "median_delta": _grade_ordinal_delta(agg_median, bl_median),
             "q3": agg_q3 or "N/A",
             "q3_delta": _grade_ordinal_delta(agg_q3, bl_q3),
-            # Response
             "resp_rate": f"{int(avg_resp_rate)}\\%" if avg_resp_rate is not None else "N/A",
-            "resp_delta": "N/A",  # baseline response rate not tracked
-            # Grade distribution
+            "resp_delta": "N/A",
             "grade_pcts": grade_pcts,
             "grade_deltas": {
                 letter: _delta_pct_str(grade_pcts[letter], bl_grade_pcts.get(letter, 0.0))
@@ -408,7 +421,7 @@ class _InstructorConsolidatedDoc:
             return "N/A"
         if len(terms) == 1:
             return terms[0]
-        # Sort by year then term
+
         def _sort_key(t):
             parts = t.split()
             year = 0
@@ -480,6 +493,7 @@ class _InstructorConsolidatedDoc:
             ("ragged2e", None),
             ("amsmath", None),
             ("etoolbox", None),
+            ("xltabular", None),
         ]
         for pkg, opts in pkgs:
             self.doc.packages.append(Package(pkg, options=opts))
@@ -493,18 +507,11 @@ class _InstructorConsolidatedDoc:
         # Instructor-level commands
         self._add_instructor_commands()
 
-        # Per-course commands
+        # Per-course commands (data + AI summaries)
         self._add_per_course_commands()
 
-        # LLM summary placeholder
-        p.append(Command("newcommand", [
-            NoEscape(r"\LLMInstructorSummary"),
-            NoEscape("AI instructor summary placeholder — not yet implemented."),
-        ]))
-
-        # Helper commands (autoD, spark, rules, courserow macro)
-        boxplot = self.boxplot_path.replace("\\", "/") if self.boxplot_path else "boxplot.png"
-        p.append(NoEscape(instructor_consolidated_tex.get_helper_commands(boxplot)))
+        # Helper commands (autoD, spark, rules, courserow/coursehistoryrow macros)
+        p.append(NoEscape(instructor_consolidated_tex.get_helper_commands()))
 
         # Page style
         p.append(Command("pagestyle", "empty"))
@@ -561,9 +568,9 @@ class _InstructorConsolidatedDoc:
         for i, cm in enumerate(self.per_course_metrics):
             prefix = self.PREFIXES[i]
 
-            def cmd(suffix, val):
+            def cmd(suffix, val, _prefix=prefix):
                 p.append(Command("newcommand", [
-                    NoEscape(rf"\Course{prefix}{suffix}"),
+                    NoEscape(rf"\Course{_prefix}{suffix}"),
                     NoEscape(str(val)),
                 ]))
 
@@ -572,7 +579,7 @@ class _InstructorConsolidatedDoc:
             cmd("Code", cm["code"])
             cmd("Size", cm["size"])
 
-            # Response rate — format for display
+            # Response rate formatting
             rr = cm["resp_rate"]
             try:
                 rr_str = str(rr).replace("%", "").strip()
@@ -594,6 +601,9 @@ class _InstructorConsolidatedDoc:
             cmd("Qthree", cm["q3"])
             cmd("QthreeDelta", cm["q3_delta"])
 
+            # Per-course AI summary (placeholder or from JSON)
+            cmd("AISummary", cm.get("ai_summary", "AI summary placeholder."))
+
     def _build_body(self):
         d = self.doc
         d.append(NoEscape(r"\normalsize"))
@@ -604,12 +614,18 @@ class _InstructorConsolidatedDoc:
         # Aggregate KPI dashboard
         d.append(NoEscape(instructor_consolidated_tex.get_aggregate_kpi_table()))
 
-        # Grade distribution + AI summary
-        d.append(NoEscape(instructor_consolidated_tex.get_grade_and_summary_section()))
-
-        # Per-course table
+        # Per-course table with history rows between course groups
         d.append(NoEscape(instructor_consolidated_tex.get_per_course_table_header()))
-        for i in range(len(self.per_course_metrics)):
-            prefix = self.PREFIXES[i]
-            d.append(NoEscape(rf"\courserow{{{prefix}}}%"))
+
+        for group_idx, (group_key, course_indices) in enumerate(self.course_groups):
+            history_prefix = self.history_prefixes[group_idx]
+
+            # Course history row before each unique course group
+            d.append(NoEscape(rf"\coursehistoryrow{{{history_prefix}}}%"))
+
+            # Course session rows within this group
+            for ci in course_indices:
+                prefix = self.PREFIXES[ci]
+                d.append(NoEscape(rf"\courserow{{{prefix}}}%"))
+
         d.append(NoEscape(instructor_consolidated_tex.get_per_course_table_footer()))
