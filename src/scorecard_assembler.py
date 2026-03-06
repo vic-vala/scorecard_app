@@ -10,6 +10,7 @@ from pylatex import(
 )
 from src.scorecard_doc import _ScorecardDoc
 from src.consolidated_doc import _ConsolidatedDoc
+from src.instructor_consolidated_doc import _InstructorConsolidatedDoc
 from src.utils import course_to_json_path, course_to_stem, course_to_output_filename, instructor_to_stem
 from src.data_handler import aggregate_for_row, get_courses_by_instructor
 
@@ -118,103 +119,50 @@ def assemble_instructor_scorecard(
     csv_path,
 ):
     """
-    Build a single LaTeX file for an instructor, containing one short
-    course card per course.
-    """
+    Build a single-page instructor-level consolidated scorecard PDF.
 
+    Uses the tabular layout from _InstructorConsolidatedDoc which shows
+    aggregate KPIs, grade distribution, AI summary placeholder, and a
+    per-course comparison table with deltas against config-driven baselines.
+    """
     paths = config['paths']
-    histogram_dir = paths['grade_histogram_dir']
     tex_output_path = paths['tex_dir']
     scorecard_output_path = paths['scorecard_dir']
 
-    # Get all courses for this instructor
-    instructor_courses = get_courses_by_instructor(instructor, csv_path, True)
+    # Get all courses for this instructor (require JSON for eval data)
+    instructor_courses = get_courses_by_instructor(instructor, csv_path, require_json=True)
 
     if instructor_courses.empty:
-        print("No courses found for instructor; nothing to generate.")
+        print("No courses with evaluations found for instructor; nothing to generate.")
         return
 
-    master_doc: Optional[Document] = None
-    is_first = True
+    # Boxplot placeholder path
+    boxplot_path = os.path.abspath(
+        os.path.join(paths.get('resources_dir', 'resources'), 'boxplot.png')
+    )
+    if isinstance(boxplot_path, str):
+        boxplot_path = boxplot_path.replace('\\', '/')
 
-    for _, course in instructor_courses.iterrows():
-        # aggregate data for this specific course
-        agg_data = aggregate_for_row(
-            comparison=config['comparison'],
-            row=course,
-            json_dir=paths['parsed_pdf_dir'],
-            csv_path=csv_path,
-        )
+    # Build the consolidated instructor doc
+    doc_builder = _InstructorConsolidatedDoc(
+        instructor_row=instructor,
+        instructor_courses=instructor_courses,
+        config=config,
+        csv_path=csv_path,
+        boxplot_path=boxplot_path,
+    )
 
-        histrogram_name = course_to_stem(course)
-        histogram_full_path = os.path.join(histogram_dir, f"{histrogram_name}.png")
+    doc = doc_builder.doc_setup()
 
-        pdf_json = load_pdf_json(course_to_json_path(course))
+    # Output filename
+    output_filename = f"{instructor.get('Instructor', 'Unknown')}_Overview"
+    output_filename = output_filename.replace(",", "").replace(" ", "_")
 
-        scorecard = _ScorecardDoc(
-            csv_row=course,
-            pdf_json=pdf_json,
-            grade_hist=histogram_full_path,
-            output_filename="placeholder",  # not used here for per-course files
-            agg_data=agg_data,
-            config=config,
-            short=True,
-            newcommand=is_first,
-        )
-
-        if is_first:
-            master_doc = Document(documentclass='article', document_options=['11pt'])
-            scorecard.doc = master_doc
-
-            scorecard._add_packages()
-            scorecard._add_preamble()
-
-            master_doc.append(NoEscape(r'{\LARGE\bfseries\textcolor{accent}{\Instructor} \\}'))
-
-            scorecard.add_short_section()
-
-            is_first = False
-        else:
-            if master_doc is None:
-                raise RuntimeError("master_doc was not initialized for instructor scorecard")
-
-            scorecard.doc = master_doc
-
-            scorecard.write_course_cmds_to_preamble = False
-            scorecard.newcommand = False
-
-            scorecard._add_overview_fields()
-            scorecard._add_evaluation_metrics_fields()
-            scorecard._add_summary_fields()
-            scorecard._add_grade_distr_fields()
-
-            scorecard.add_short_section()
-
-    if master_doc is None:
-        print("Unexpected error: master_doc was not created.")
-        return
-
-    first_course = instructor_courses.iloc[0]
-    gpa_graph_dir = paths['instructor_course_gpa_graph_dir']
-    gpa_graph_name = instructor_to_stem(first_course)
-    gpa_graph_full_path = os.path.abspath(os.path.join(gpa_graph_dir, f"{gpa_graph_name}.png"))
-
-    # Convert backslashes to forward slashes for LaTeX compatibility on Windows
-    if isinstance(gpa_graph_full_path, str):
-        gpa_graph_full_path = gpa_graph_full_path.replace('\\', '/')
-
-    master_doc.append(NoEscape(
-        rf'\includegraphics[width=\textwidth,height=1\textheight,keepaspectratio]{{{gpa_graph_full_path}}}'
-    ))
-    master_doc.append(Command('newpage'))
-
-    output_filename = f"{instructor.get('Instructor')}_Overview"
     full_output_path = os.path.join(tex_output_path, output_filename)
-    master_doc.generate_tex(full_output_path)
+    doc.generate_tex(full_output_path)
     print(f"  ✅ Saved instructor LaTeX to {full_output_path}")
 
-    # Save the latex as a pdf now
     pdf_filename = f"{output_filename}.pdf"
     full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
-    master_doc.generate_pdf(full_scorecard_output_path, clean_tex=True, compiler='pdflatex')
+    doc.generate_pdf(full_scorecard_output_path, clean_tex=True, compiler='pdflatex')
     print(f"📝✅ Saved instructor Scorecard to {full_scorecard_output_path}")
