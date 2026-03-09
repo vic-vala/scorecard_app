@@ -592,21 +592,65 @@ def get_courses_by_instructor(
     df = pd.read_csv(csv_path, dtype=str)
 
     # Normalize columns for reliable matching
-    for col in ["Instructor", "Subject", "Catalog Nbr", "Class Nbr", "Session Code"]:
+    for col in [
+        "Instructor",
+        "Instructor First",
+        "Instructor Middle",
+        "Instructor Last",
+        "Subject",
+        "Catalog Nbr",
+        "Class Nbr",
+        "Session Code",
+    ]:
         if col in df.columns:
             df[col] = df[col].fillna("").astype(str).str.strip()
 
-    mask = pd.Series(True, index=df.index)
+    def _norm_text(value: Any) -> str:
+        return re.sub(r"[\s,]+", " ", str(value or "").strip().lower()).strip()
 
-    # Match by instructor name
-    if "Instructor" in instructor_row and instructor_row["Instructor"]:
-        mask &= (df["Instructor"] == instructor_row["Instructor"])
+    inst_full = _norm_text(instructor_row.get("Instructor", ""))
+    inst_first = _norm_text(instructor_row.get("Instructor First", ""))
+    inst_last = _norm_text(instructor_row.get("Instructor Last", ""))
+    inst_middle = _norm_text(instructor_row.get("Instructor Middle", ""))
+
+    # Primary exact-name matching across common formats.
+    full_candidates = {inst_full}
+    if inst_first and inst_last:
+        full_candidates.add(_norm_text(f"{inst_first} {inst_last}"))
+        full_candidates.add(_norm_text(f"{inst_last}, {inst_first}"))
+    if inst_first and inst_middle and inst_last:
+        full_candidates.add(_norm_text(f"{inst_first} {inst_middle} {inst_last}"))
+        full_candidates.add(_norm_text(f"{inst_last}, {inst_first} {inst_middle}"))
+    full_candidates.discard("")
+
+    if "Instructor" in df.columns:
+        inst_col_norm = df["Instructor"].map(_norm_text)
     else:
-        # Fall back to matching by individual name components if available
-        if "Instructor First" in instructor_row and instructor_row["Instructor First"]:
-            mask &= (df["Instructor First"] == instructor_row["Instructor First"])
-        if "Instructor Last" in instructor_row and instructor_row["Instructor Last"]:
-            mask &= (df["Instructor Last"] == instructor_row["Instructor Last"])
+        inst_col_norm = pd.Series("", index=df.index)
+
+    mask = inst_col_norm.isin(full_candidates) if full_candidates else pd.Series(False, index=df.index)
+
+    # Fallback to split-name columns when exact full name differs in formatting.
+    if not mask.any():
+        split_mask = pd.Series(True, index=df.index)
+        used_split = False
+        if inst_first and "Instructor First" in df.columns:
+            split_mask &= (df["Instructor First"].map(_norm_text) == inst_first)
+            used_split = True
+        if inst_last and "Instructor Last" in df.columns:
+            split_mask &= (df["Instructor Last"].map(_norm_text) == inst_last)
+            used_split = True
+        if used_split:
+            mask = split_mask
+
+    # Last-name fallback for cases where first name includes middle names/initials inconsistently.
+    if not mask.any() and inst_last and "Instructor" in df.columns:
+        mask = df["Instructor"].astype(str).str.contains(
+            rf"\b{re.escape(inst_last)}\b",
+            case=False,
+            regex=True,
+            na=False,
+        )
 
     # Base filtered results
     result = df[mask].copy()

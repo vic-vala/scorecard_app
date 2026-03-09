@@ -16,6 +16,7 @@ from pylatex import(
 from src import latex_sections
 from src.data_handler import aggregate_for_row, get_courses_by_instructor
 from src import compute_metrics
+from src.data_vis import generate_instructor_course_history_overlay_graph, generate_course_grade_histogram
 
 # Organizing all the data necessary for automating the latex, much cleaner containing
 #   everything in one class.
@@ -618,8 +619,8 @@ def assemble_instructor_scorecard(
     tex_output_path = paths['tex_dir']
     scorecard_output_path = paths['scorecard_dir']
 
-    # Get all courses for this instructor
-    instructor_courses = get_courses_by_instructor(instructor, csv_path, True)
+    # Match the same way as overlay generation: use CSV courses even without JSON.
+    instructor_courses = get_courses_by_instructor(instructor, csv_path, False)
 
     if instructor_courses.empty:
         print("No courses found for instructor; nothing to generate.")
@@ -628,7 +629,39 @@ def assemble_instructor_scorecard(
     master_doc: Optional[Document] = None
     is_first = True
 
+    def _append_png_page(
+        doc: Document,
+        png_path: str,
+        height: str = "0.55\\textheight",
+        newpage_before: bool = False,
+    ) -> bool:
+        if not png_path:
+            return False
+        full_path = os.path.abspath(png_path)
+        if not os.path.exists(full_path):
+            return False
+        latex_path = full_path.replace('\\', '/')
+        if newpage_before:
+            doc.append(Command('newpage'))
+        doc.append(NoEscape(
+            rf'\includegraphics[width=\textwidth,height={height},keepaspectratio]{{{latex_path}}}'
+        ))
+        doc.append(Command('newpage'))
+        return True
+
+    seen_overlay_courses: set[tuple[str, str]] = set()
     for _, course in instructor_courses.iterrows():
+        overlay_subject = str(course.get("Subject") or "").strip()
+        overlay_catalog = str(course.get("Catalog Nbr") or "").strip()
+        overlay_course_key = (overlay_subject, overlay_catalog)
+
+        histrogram_name = course_to_stem(course)
+        histogram_full_path = os.path.join(histogram_dir, f"{histrogram_name}.png")
+        generated_hist = generate_course_grade_histogram(config, course, csv_path)
+        if generated_hist:
+            histogram_full_path = generated_hist
+        pdf_json = load_pdf_json(course_to_json_path(course))
+
         # aggregate data for this specific course
         agg_data = aggregate_for_row(
             comparison=config['comparison'],
@@ -636,11 +669,6 @@ def assemble_instructor_scorecard(
             json_dir=paths['parsed_pdf_dir'],
             csv_path=csv_path,
         )
-
-        histrogram_name = course_to_stem(course)
-        histogram_full_path = os.path.join(histogram_dir, f"{histrogram_name}.png")
-
-        pdf_json = load_pdf_json(course_to_json_path(course))
 
         scorecard = _ScorecardDoc(
             csv_row=course,
@@ -663,6 +691,17 @@ def assemble_instructor_scorecard(
             master_doc.append(NoEscape(r'{\LARGE\bfseries\textcolor{accent}{\Instructor} \\}'))
 
             scorecard.add_short_section()
+            hist_added = _append_png_page(master_doc, histogram_full_path, "0.92\\textheight", newpage_before=True)
+            print(f"  Histogram page {'added' if hist_added else 'missing'}: {os.path.abspath(histogram_full_path)}")
+            if overlay_course_key not in seen_overlay_courses:
+                overlay_graph_path = generate_instructor_course_history_overlay_graph(
+                    config=config,
+                    course=course,
+                    csv_path=csv_path,
+                    instructor=instructor,
+                )
+                _append_png_page(master_doc, overlay_graph_path, "0.55\\textheight")
+                seen_overlay_courses.add(overlay_course_key)
 
             is_first = False
         else:
@@ -680,24 +719,27 @@ def assemble_instructor_scorecard(
             scorecard._add_grade_distr_fields()
 
             scorecard.add_short_section()
+            if not os.path.exists(os.path.abspath(histogram_full_path)):
+                generated_hist = generate_course_grade_histogram(config, course, csv_path)
+                if generated_hist:
+                    histogram_full_path = generated_hist
+            hist_added = _append_png_page(master_doc, histogram_full_path, "0.92\\textheight", newpage_before=True)
+            print(f"  Histogram page {'added' if hist_added else 'missing'}: {os.path.abspath(histogram_full_path)}")
+            if overlay_course_key not in seen_overlay_courses:
+                overlay_graph_path = generate_instructor_course_history_overlay_graph(
+                    config=config,
+                    course=course,
+                    csv_path=csv_path,
+                    instructor=instructor,
+                )
+                _append_png_page(master_doc, overlay_graph_path, "0.55\\textheight")
+                seen_overlay_courses.add(overlay_course_key)
 
     if master_doc is None:
         print("Unexpected error: master_doc was not created.")
         return
 
-    first_course = instructor_courses.iloc[0]
-    gpa_graph_dir = paths['instructor_course_gpa_graph_dir']
-    gpa_graph_name = instructor_to_stem(first_course)
-    gpa_graph_full_path = os.path.abspath(os.path.join(gpa_graph_dir, f"{gpa_graph_name}.png"))
-
-    # Convert backslashes to forward slashes for LaTeX compatibility on Windows
-    if isinstance(gpa_graph_full_path, str):
-        gpa_graph_full_path = gpa_graph_full_path.replace('\\', '/')
-
-    master_doc.append(NoEscape(
-        rf'\includegraphics[width=\textwidth,height=1\textheight,keepaspectratio]{{{gpa_graph_full_path}}}'
-    ))
-    master_doc.append(Command('newpage'))
+    print("  ℹ️ Skipping extra instructor graph pages; only histogram and overlay pages are included.")
 
     output_filename = f"{instructor.get('Instructor')}_Overview"
     full_output_path = os.path.join(tex_output_path, output_filename)
