@@ -33,7 +33,7 @@ def assemble_scorecard(
         csv_path,
         short:bool = False,
         newcommand:bool = True,
-        consolidated:bool = False,
+        consolidated:bool = True,
     ):
     """
     Generates the .tex for the scorecard & saves it as a pdf.
