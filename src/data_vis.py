@@ -724,7 +724,7 @@ def generate_course_history_graph(
         spark_ax = ax.inset_axes(
             [spark_left, spark_bottom, spark_width, spark_height],
             transform=ax.transAxes,
-            facecolor="#ffffffcc",
+            facecolor="#ffffff",
             zorder=6,
         )
         spark_ax.axhline(0.0, color="#777777", linewidth=0.8, linestyle=":", zorder=1)
@@ -1017,8 +1017,8 @@ def generate_instructor_course_history_overlay_graph(
     y_max = min(4.33, float(all_gpas.max()) + 0.12) if not all_gpas.empty else 4.33
 
     fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=dpi)
-    ax.set_facecolor("#fcfcfc")
-    fig.patch.set_facecolor("#fcfcfc")
+    ax.set_facecolor("#ffffff")
+    fig.patch.set_facecolor("#ffffff")
 
     x_vals = stats["x"].astype(float).values
     mean_vals = stats["mean_gpa"].astype(float).values
