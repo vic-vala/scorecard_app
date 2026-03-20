@@ -44,9 +44,6 @@ def get_helper_commands():
 }%
 %
 % --- Sparkline (per-course GPA boxplot) ---
-% Uses \BoxplotDir (absolute path to GPA_trend folder) and
-% \BoxplotStem (instructor-specific stem e.g. Ross_Maciejewski)
-% so the filename resolves to e.g. /abs/path/GPA_trend/boxplot_Ross_Maciejewski_A.png
 \newcommand{\spark}[1]{\smash{\raisebox{-0.25\height}{\includegraphics[height=0.4cm,width=6cm]{\BoxplotDir/boxplot_\BoxplotStem_#1.png}}}}%
 %
 \newcommand{\thinrule}{%
@@ -62,12 +59,10 @@ def get_helper_commands():
 \newcolumntype{R}[1]{>{\raggedleft\arraybackslash}m{#1}}%
 %
 % --- Course-row macro (data row + detail row with histogram + AI summary) ---
-\newcounter{courserowcnt}%
-\setcounter{courserowcnt}{0}%
-%
+% NOTE: Alternating \rowcolor removed — \rowcolor uses \noalign internally,
+% which is incompatible with \ifodd conditionals inside xltabular/longtable.
+% Rows are visually separated by \thinrule instead.
 \newcommand{\courserow}[1]{%
-    \stepcounter{courserowcnt}%
-    \ifodd\value{courserowcnt}\else\rowcolor{rowBlueAlt}\fi%
     \csname Course#1Name\endcsname &
     \csname Course#1Term\endcsname &
     \csname Course#1Code\endcsname &
@@ -86,7 +81,6 @@ def get_helper_commands():
     \autoD{\csname Course#1QthreeDelta\endcsname} \\*
     \noalign{\penalty10000}%
     % --- Detail row: histogram + AI overview ---
-    \ifodd\value{courserowcnt}\else\rowcolor{rowBlueAlt}\fi%
     \multicolumn{18}{@{\hspace{\tabcolsep}}l@{\hspace{\tabcolsep}}}{%
         \begin{minipage}[t]{\dimexpr\linewidth-2\tabcolsep\relax}%
         \vspace{1pt}%
@@ -219,7 +213,6 @@ def get_per_course_table_header():
 \setlength{\arrayrulewidth}{0.3pt}%
 \setlength{\tabcolsep}{3pt}%
 %
-\setcounter{courserowcnt}{0}%
 \noindent%
 \begin{xltabular}{\textwidth}{%
     l%              Course
