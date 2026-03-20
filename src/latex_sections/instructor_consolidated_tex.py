@@ -246,7 +246,7 @@ def get_per_course_table_header():
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
 \textcolor{headerFg}{\textbf{GPA}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{Trend}}} &
+\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{GPA Trend}}} &
 \textcolor{headerFg}{\textbf{Q1}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
 \textcolor{headerFg}{\textbf{Med}} &
@@ -267,7 +267,7 @@ def get_per_course_table_header():
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
 \textcolor{headerFg}{\textbf{GPA}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{Trend}}} &
+\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{GPA Trend}}} &
 \textcolor{headerFg}{\textbf{Q1}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
 \textcolor{headerFg}{\textbf{Med}} &
