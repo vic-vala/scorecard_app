@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=0.5):
+def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=1.5):
     
     # Choose size and background
     fig, ax = plt.subplots(figsize=(width, height))
@@ -16,7 +16,7 @@ def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=0.5)
         'q3': q3,
         'whishi': max
     }]
-
+    
     # Styling
     box_color = '#D0E2FF'     
     line_color = '#789BE4'    
@@ -24,7 +24,7 @@ def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=0.5)
     boxprops = dict(facecolor=box_color, color=line_color, linewidth=1.5)
     whiskerprops = dict(color=line_color, linewidth=1.5)
     capprops = dict(color=line_color, linewidth=1.5)
-    medianprops = dict(color=line_color, linewidth=1.5)
+    medianprops = dict(color="#000000", linewidth=2.5)
 
     # Draw the boxplot
     ax.bxp(stats, vert=False, patch_artist=True, showfliers=False,
@@ -43,10 +43,17 @@ def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=0.5)
     ax.scatter(x, 1, color=dot_color, edgecolors='#4A6B9C', 
                s=150, zorder=3, linewidths=1.5)
 
+
+    # Median text 
+    ax.text(median, 1.15, f"{median:.1f}", 
+            ha='center', va='center', 
+            fontsize=10, fontweight='bold', color='#4A6B9C')
+
+
     # Padding
     padding = (max - min) * 0.05
     ax.set_xlim(min - padding, max + padding)
-    
+
     ax.axis('off')  # Hide labels
 
     # Save the image exactly as requested
