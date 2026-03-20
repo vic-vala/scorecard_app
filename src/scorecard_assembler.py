@@ -129,6 +129,9 @@ def assemble_instructor_scorecard(
     tex_output_path = paths['tex_dir']
     scorecard_output_path = paths['scorecard_dir']
 
+    # GPA boxplot sparklines go into temporary_files/images/GPA_trend/
+    gpa_trend_dir = os.path.join(paths.get("temp_dir", "temporary_files"), "GPA_trend")
+
     # Get all courses for this instructor (require JSON for eval data)
     instructor_courses = get_courses_by_instructor(instructor, csv_path, require_json=True)
 
@@ -153,6 +156,9 @@ def assemble_instructor_scorecard(
     )
 
     doc = doc_builder.doc_setup()
+
+    # Generate per-course boxplot sparklines into GPA_trend folder
+    doc_builder.generate_boxplots(gpa_trend_dir)
 
     # Output filename
     output_filename = f"{instructor.get('Instructor', 'Unknown')}_Overview"

@@ -19,6 +19,7 @@ from .utils import (
     _parse_catalog_int,
     _safe_float,
     _safe_int,
+    _slug,
     course_to_json_path,
     course_to_stem,
 )
@@ -120,6 +121,19 @@ class _InstructorConsolidatedDoc:
         self.history_prefixes: List[str] = []
 
         self._compute_all()
+
+    # ------------------------------------------------------------------ #
+    #  Naming helpers
+    # ------------------------------------------------------------------ #
+
+    def _boxplot_stem(self) -> str:
+        """
+        Instructor-specific, filename-safe stem for boxplot PNGs.
+        Format: {First}_{Last}  e.g. Ross_Maciejewski
+        """
+        first = _slug(self.instructor_row.get("Instructor First", ""))
+        last = _slug(self.instructor_row.get("Instructor Last", ""))
+        return f"{first}_{last}"
 
     # ------------------------------------------------------------------ #
     #  Computation
@@ -464,6 +478,49 @@ class _InstructorConsolidatedDoc:
         return "All Available Courses"
 
     # ------------------------------------------------------------------ #
+    #  Boxplot generation
+    # ------------------------------------------------------------------ #
+
+    def generate_boxplots(self, output_dir: str):
+        """
+        Generate GPA boxplot sparkline PNGs for each per-course row.
+
+        Files are named:  boxplot_{First}_{Last}_{PREFIX}.png
+        e.g. boxplot_Ross_Maciejewski_A.png, boxplot_Ross_Maciejewski_B.png, ...
+        and placed into output_dir (expected: temporary_files/images/GPA_trend/).
+
+        The LaTeX macro \\spark{PREFIX} uses \\BoxplotDir and \\BoxplotStem
+        to resolve the full path.
+        """
+        from .gpa_trend import create_gpa_sparkline
+
+        os.makedirs(output_dir, exist_ok=True)
+        stem = self._boxplot_stem()
+
+        for i, cm in enumerate(self.per_course_metrics):
+            prefix = self.PREFIXES[i]
+            agg = cm["agg_data"]
+
+            gpa_min = agg.get("gpa_min")
+            gpa_q1 = agg.get("gpa_q1")
+            gpa_med = agg.get("gpa_median_value")
+            gpa_q3 = agg.get("gpa_q3")
+            gpa_max = agg.get("gpa_max")
+            x = cm["gpa"]
+
+            if any(v is None for v in [gpa_min, gpa_q1, gpa_med, gpa_q3, gpa_max]):
+                print(f"    ⚠️ Insufficient aggregate GPA data for boxplot {prefix} ({cm['name']}). Skipping.")
+                continue
+
+            filename = f"boxplot_{stem}_{prefix}.png"
+            path = os.path.join(output_dir, filename)
+            create_gpa_sparkline(
+                min=gpa_min, q1=gpa_q1, median=gpa_med,
+                q3=gpa_q3, max=gpa_max, x=x, path=path,
+            )
+            print(f"    ✅ Generated boxplot: {filename}")
+
+    # ------------------------------------------------------------------ #
     #  Document generation
     # ------------------------------------------------------------------ #
 
@@ -529,6 +586,15 @@ class _InstructorConsolidatedDoc:
         cmd("TotalSessions", agg.get("total_sessions", 0))
         cmd("TotalEnrollment", agg.get("total_enrollment", 0))
         cmd("BaselineText", agg.get("baseline_text", "All Available Courses"))
+
+        # Boxplot path components used by the \spark macro
+        # BoxplotDir = absolute path to GPA_trend folder (forward slashes for LaTeX)
+        gpa_trend_dir = os.path.join(
+            self.paths.get("temp_dir", "temporary_files"), "GPA_trend"
+        )
+        boxplot_dir_abs = os.path.abspath(gpa_trend_dir).replace("\\", "/")
+        cmd("BoxplotDir", boxplot_dir_abs)
+        cmd("BoxplotStem", self._boxplot_stem())
 
         # Eval KPIs
         cmd("AggOverall", agg["overall"] if agg.get("overall") is not None else "N/A")

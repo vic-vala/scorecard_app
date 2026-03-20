@@ -43,8 +43,11 @@ def get_helper_commands():
     }}}}}}}}}%
 }%
 %
-% --- Sparkline placeholder (per-course) ---
-\newcommand{\spark}[1]{\smash{\raisebox{-0.25\height}{\includegraphics[height=0.4cm,width=6cm]{boxplot_#1.png}}}}%
+% --- Sparkline (per-course GPA boxplot) ---
+% Uses \BoxplotDir (absolute path to GPA_trend folder) and
+% \BoxplotStem (instructor-specific stem e.g. Ross_Maciejewski)
+% so the filename resolves to e.g. /abs/path/GPA_trend/boxplot_Ross_Maciejewski_A.png
+\newcommand{\spark}[1]{\smash{\raisebox{-0.25\height}{\includegraphics[height=0.4cm,width=6cm]{\BoxplotDir/boxplot_\BoxplotStem_#1.png}}}}%
 %
 \newcommand{\thinrule}{%
     \arrayrulecolor{ruleGray}%
