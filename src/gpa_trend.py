@@ -44,13 +44,6 @@ def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=4.5, height=0.
     ax.scatter(x, 1, color=dot_color, edgecolors='#ffffff', 
                s=150, zorder=3, linewidths=1.5)
 
-
-    # Median text 
-    ax.text(median, 1.15, f"{median:.1f}", 
-            ha='center', va='center', 
-            fontsize=10, fontweight='bold', color='#4A6B9C')
-
-
     # Padding
     padding = (max - min) * 0.05
     ax.set_xlim(min - padding, max + padding)
