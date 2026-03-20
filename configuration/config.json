@@ -17,11 +17,13 @@
     },
     "scorecard_gen_settings": {
         "include_LLM_insights": "true",
-        "debug_replace_LLM_with_placeholder": "true"
+        "debug_replace_LLM_with_placeholder": "true",
+        "generate_per_session_scorecards": "false"
     },
     "overwrite_settings": {
         "overwrite_csv": "true",
-        "overwrite_json": "true"
+        "overwrite_json": "false",
+        "overwrite_llm_summary": "false"
     },
     "course_history_graph": {
         "course_history_connect_points": "false"
