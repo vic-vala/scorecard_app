@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=0.5):
+def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=4.5, height=0.3):
     
     # Choose size and background
     fig, ax = plt.subplots(figsize=(width, height))
@@ -19,28 +19,30 @@ def create_gpa_sparkline(min, q1, median, q3, max, x, path, width=3, height=0.5)
 
     # Styling
     box_color = '#D0E2FF'     
-    line_color = '#789BE4'    
+    line_color = '#79ACF6'    
     
-    boxprops = dict(facecolor=box_color, color=line_color, linewidth=1.5)
-    whiskerprops = dict(color=line_color, linewidth=1.5)
-    capprops = dict(color=line_color, linewidth=1.5)
-    medianprops = dict(color=line_color, linewidth=1.5)
+    default_line_width = 1.5
+    boxprops = dict(facecolor=box_color, color=line_color, linewidth=default_line_width)
+    whiskerprops = dict(color=line_color, linewidth=default_line_width)
+    capprops = dict(color=line_color, linewidth=default_line_width)
+    medianprops = dict(color=line_color, linewidth=default_line_width)
 
     # Draw the boxplot
     ax.bxp(stats, vert=False, patch_artist=True, showfliers=False,
            boxprops=boxprops, whiskerprops=whiskerprops, 
-           capprops=capprops, medianprops=medianprops)
+           capprops=capprops, medianprops=medianprops,
+           widths=[0.55])
 
     # Use ranges in order to determine color
     if x < q1:
-        dot_color = '#D62728'  
+        dot_color = '#930008'  
     elif x <= q3:
-        dot_color = '#FF9800'  
+        dot_color = '#FFCF7D'  
     else:
-        dot_color = '#4CAF50'  
+        dot_color = '#0e7300'  
 
     # Plot point x
-    ax.scatter(x, 1, color=dot_color, edgecolors='#4A6B9C', 
+    ax.scatter(x, 1, color=dot_color, edgecolors='#79ACF6', 
                s=150, zorder=3, linewidths=1.5)
 
     # Padding
