@@ -14,9 +14,9 @@ N_GPU_LAYERS = int(os.environ.get("N_GPU_LAYERS", 0)) # All CPU for now?
 
 # LLM Parameters
 MAX_TOKENS = min(int(os.environ.get("MAX_TOKENS", 4096)), 4096)
-TEMP       = float(os.environ.get("LLM_TEMP", "0.4"))
+TEMP       = float(os.environ.get("LLM_TEMP", "0.0"))
 TOP_P      = float(os.environ.get("TOP_P", 0.7))
-REPEAT_PEN = float(os.environ.get("REPEAT_PEN", 1.3))
+REPEAT_PEN = float(os.environ.get("REPEAT_PEN", 1.0))
 MIN_P      = float(os.environ.get("MIN_P", 0.05))
 
 
