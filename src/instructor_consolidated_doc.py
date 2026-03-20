@@ -205,7 +205,7 @@ class _InstructorConsolidatedDoc:
         avg1 = avg2 = overall = None
         resp_rate_str = "N/A"
         resp_count = 0
-        ai_summary = "AI summary placeholder."
+        ai_summary = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc ultrices non urna et auctor. Nunc est sem, accumsan eget venenatis in, molestie quis turpis. Fusce eu justo et nisi vulputate vehicula. Donec viverra velit eros. In blandit, neque ut consectetur condimentum, lorem nibh lobortis justo, id tristique ipsum metus vel lorem. Aenean auctor elementum odio sed semper. Praesent ac augue sit amet odio condimentum condimentum. Donec egestas dui eleifend, aliquet nunc vel, rutrum nunc. Mauris vulputate dui quis metus luctus, nec semper nulla aliquet. Etiam imperdiet felis non lectus tempus hendrerit. Sed tincidunt turpis vel lacus gravida, eget sagittis est tempor. Nam metus dui, tempus id iaculis et, malesuada sed quam. Sed sed mauris sed magna vulputate semper. In sit amet leo tempus, feugiat leo et, tincidunt turpis."
 
         if has_eval:
             info = pdf_json.get("eval_info", {})
@@ -521,6 +521,81 @@ class _InstructorConsolidatedDoc:
             print(f"    ✅ Generated boxplot: {filename}")
 
     # ------------------------------------------------------------------ #
+    #  Histogram generation (per-course, small square format)
+    # ------------------------------------------------------------------ #
+
+    def generate_histograms(self, output_dir: str):
+        """
+        Generate grade histogram PNGs for each per-course row.
+
+        Files are named:  histogram_{First}_{Last}_{PREFIX}.png
+        and placed into output_dir.
+
+        The LaTeX macro uses \\HistDir and \\BoxplotStem to resolve the full path.
+        """
+        from .data_vis import generate_course_grade_histogram
+
+        os.makedirs(output_dir, exist_ok=True)
+        stem = self._boxplot_stem()
+
+        for i, cm in enumerate(self.per_course_metrics):
+            prefix = self.PREFIXES[i]
+            course = cm["course"]
+
+            filename = f"histogram_{stem}_{prefix}.png"
+            out_path = os.path.join(output_dir, filename)
+
+            result = generate_course_grade_histogram(
+                config=self.config,
+                course=course,
+                csv_path=self.csv_path,
+                output_override=out_path,
+            )
+            if result:
+                print(f"    ✅ Generated histogram: {filename}")
+            else:
+                print(f"    ⚠️ Failed to generate histogram for {cm['name']} ({prefix}). Skipping.")
+
+    # ------------------------------------------------------------------ #
+    #  Course history overlay generation (per course group)
+    # ------------------------------------------------------------------ #
+
+    def generate_course_history_overlays(self, output_dir: str):
+        """
+        Generate course history overlay PNGs for each unique course group.
+
+        Files are named:  coursehistory_{First}_{Last}_{HISTORY_PREFIX}.png
+        and placed into output_dir.
+
+        The LaTeX macro uses \\OverlayDir and \\BoxplotStem to resolve the full path.
+        """
+        from .data_vis import generate_instructor_course_history_overlay_graph
+
+        os.makedirs(output_dir, exist_ok=True)
+        stem = self._boxplot_stem()
+
+        for group_idx, (group_key, course_indices) in enumerate(self.course_groups):
+            prefix = self.history_prefixes[group_idx]
+            # Use first course in the group as representative
+            cm = self.per_course_metrics[course_indices[0]]
+            course = cm["course"]
+
+            filename = f"coursehistory_{stem}_{prefix}.png"
+            out_path = os.path.join(output_dir, filename)
+
+            result = generate_instructor_course_history_overlay_graph(
+                config=self.config,
+                course=course,
+                csv_path=self.csv_path,
+                instructor=self.instructor_row,
+                output_override=out_path,
+            )
+            if result:
+                print(f"    ✅ Generated course history overlay: {filename}")
+            else:
+                print(f"    ⚠️ Failed to generate overlay for {group_key} ({prefix}). Skipping.")
+
+    # ------------------------------------------------------------------ #
     #  Document generation
     # ------------------------------------------------------------------ #
 
@@ -595,6 +670,20 @@ class _InstructorConsolidatedDoc:
         boxplot_dir_abs = os.path.abspath(gpa_trend_dir).replace("\\", "/")
         cmd("BoxplotDir", boxplot_dir_abs)
         cmd("BoxplotStem", self._boxplot_stem())
+
+        # Histogram path components used by the \courserow macro
+        hist_dir = os.path.join(
+            self.paths.get("temp_dir", "temporary_files"), "instructor_histograms"
+        )
+        hist_dir_abs = os.path.abspath(hist_dir).replace("\\", "/")
+        cmd("HistDir", hist_dir_abs)
+
+        # Overlay path components used by the \coursehistoryrow macro
+        overlay_dir = os.path.join(
+            self.paths.get("temp_dir", "temporary_files"), "instructor_overlays"
+        )
+        overlay_dir_abs = os.path.abspath(overlay_dir).replace("\\", "/")
+        cmd("OverlayDir", overlay_dir_abs)
 
         # Eval KPIs
         cmd("AggOverall", agg["overall"] if agg.get("overall") is not None else "N/A")

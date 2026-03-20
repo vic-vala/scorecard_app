@@ -192,8 +192,11 @@ def assemble_instructor_scorecard(
     tex_output_path = paths['tex_dir']
     scorecard_output_path = paths['scorecard_dir']
 
-    # GPA boxplot sparklines go into temporary_files/images/GPA_trend/
-    gpa_trend_dir = os.path.join(paths.get("temp_dir", "temporary_files"), "GPA_trend")
+    # Image output directories (parallel to GPA_trend for boxplots)
+    temp_dir = paths.get("temp_dir", "temporary_files")
+    gpa_trend_dir = os.path.join(temp_dir, "GPA_trend")
+    histogram_dir = os.path.join(temp_dir, "instructor_histograms")
+    overlay_dir = os.path.join(temp_dir, "instructor_overlays")
 
     # Get all courses for this instructor (require JSON for eval data)
     instructor_courses = get_courses_by_instructor(instructor, csv_path, require_json=True)
@@ -222,6 +225,12 @@ def assemble_instructor_scorecard(
 
     # Generate per-course boxplot sparklines into GPA_trend folder
     doc_builder.generate_boxplots(gpa_trend_dir)
+
+    # Generate per-course grade histograms into instructor_histograms folder
+    doc_builder.generate_histograms(histogram_dir)
+
+    # Generate per-course-group history overlay graphs into instructor_overlays folder
+    doc_builder.generate_course_history_overlays(overlay_dir)
 
     # Output filename
     output_filename = f"{instructor.get('Instructor', 'Unknown')}_Overview"

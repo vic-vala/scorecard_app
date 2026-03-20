@@ -87,7 +87,7 @@ def get_helper_commands():
         \noindent%
         \begin{minipage}[t]{0.20\linewidth}%
             \vspace{0pt}%
-            \includegraphics[width=\linewidth]{histogram_#1.png}%
+            \includegraphics[width=\linewidth]{\HistDir/histogram_\BoxplotStem_#1.png}%
         \end{minipage}%
         \hfill%
         \begin{minipage}[t]{0.76\linewidth}%
@@ -107,7 +107,7 @@ def get_helper_commands():
         \begin{minipage}[c]{\dimexpr\linewidth-2\tabcolsep\relax}%
         \vspace{4pt}%
         \centering%
-        \includegraphics[width=\linewidth]{coursehistory_#1.png}%
+        \includegraphics[width=\linewidth]{\OverlayDir/coursehistory_\BoxplotStem_#1.png}%
         \vspace{4pt}%
         \end{minipage}%
     } \\
