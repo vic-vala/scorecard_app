@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import sys
 from typing import Any, Mapping, Optional
 
@@ -26,6 +27,68 @@ def load_pdf_json(pdf_json_path):
     except json.JSONDecodeError as e:
         print(f"Error: Failed to decode json from {pdf_json_path}. Details: {e}", file=sys.stderr)
         return None
+
+
+def _compile_pdf(doc, output_path, compiler='pdflatex', clean_tex=True, passes=2):
+    """
+    Generate .tex and compile to PDF with multiple passes.
+
+    Runs pdflatex multiple times to resolve cross-references (longtable column
+    widths, lastpage counters, etc.). Checks for PDF existence rather than
+    relying on the exit code, since pdflatex returns non-zero for warnings
+    like 'Misplaced \\noalign' even when the PDF is produced successfully.
+
+    Args:
+        doc: pylatex Document instance
+        output_path: output filepath without extension
+        compiler: LaTeX compiler to use
+        clean_tex: remove .tex after compilation
+        passes: number of pdflatex passes (2 resolves most cross-refs)
+    """
+    # Generate .tex file
+    doc.generate_tex(output_path)
+
+    tex_file = output_path + '.tex'
+    pdf_file = output_path + '.pdf'
+    work_dir = os.path.dirname(os.path.abspath(tex_file))
+    tex_basename = os.path.basename(tex_file)
+
+    # Run pdflatex N times for cross-references
+    last_result = None
+    for pass_num in range(1, passes + 1):
+        last_result = subprocess.run(
+            [compiler, '--interaction=nonstopmode', tex_basename],
+            cwd=work_dir,
+            capture_output=True,
+            timeout=120,
+        )
+
+    # Verify PDF was produced (don't rely on exit code — pdflatex returns
+    # non-zero for non-fatal warnings like rowcolor/noalign conflicts)
+    if not os.path.exists(pdf_file):
+        stderr = last_result.stderr.decode('utf-8', errors='replace') if last_result else 'unknown'
+        raise RuntimeError(
+            f"pdflatex failed to produce {pdf_file}\n"
+            f"Compiler stderr:\n{stderr}"
+        )
+
+    # Clean auxiliary files
+    for ext in ['.aux', '.log', '.out', '.fls', '.fdb_latexmk']:
+        aux_file = output_path + ext
+        if os.path.exists(aux_file):
+            try:
+                os.remove(aux_file)
+            except OSError:
+                pass
+
+    if clean_tex and os.path.exists(tex_file):
+        try:
+            os.remove(tex_file)
+        except OSError:
+            pass
+
+    return pdf_file
+
 
 def assemble_scorecard(
         course: Mapping[str, Any],
@@ -107,10 +170,10 @@ def assemble_scorecard(
     latex_doc.doc.generate_tex(full_output_path)
     print(f"  ✅ Saved LaTeX to {full_output_path}")
 
-    # Save the latex as a pdf now
+    # Compile to PDF with 2 passes for cross-references
     pdf_filename = f"{latex_doc.output_filename}.pdf"
     full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
-    latex_doc.doc.generate_pdf(full_scorecard_output_path, clean_tex=True, compiler='pdflatex')
+    _compile_pdf(latex_doc.doc, full_scorecard_output_path, compiler='pdflatex', clean_tex=True)
     print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
 
 def assemble_instructor_scorecard(
@@ -128,6 +191,12 @@ def assemble_instructor_scorecard(
     paths = config['paths']
     tex_output_path = paths['tex_dir']
     scorecard_output_path = paths['scorecard_dir']
+
+    # Image output directories (parallel to GPA_trend for boxplots)
+    temp_dir = paths.get("temp_dir", "temporary_files")
+    gpa_trend_dir = os.path.join(temp_dir, "GPA_trend")
+    histogram_dir = os.path.join(temp_dir, "instructor_histograms")
+    overlay_dir = os.path.join(temp_dir, "instructor_overlays")
 
     # Get all courses for this instructor (require JSON for eval data)
     instructor_courses = get_courses_by_instructor(instructor, csv_path, require_json=True)
@@ -154,15 +223,26 @@ def assemble_instructor_scorecard(
 
     doc = doc_builder.doc_setup()
 
+    # Generate per-course boxplot sparklines into GPA_trend folder
+    doc_builder.generate_boxplots(gpa_trend_dir)
+
+    # Generate per-course grade histograms into instructor_histograms folder
+    doc_builder.generate_histograms(histogram_dir)
+
+    # Generate per-course-group history overlay graphs into instructor_overlays folder
+    doc_builder.generate_course_history_overlays(overlay_dir)
+
     # Output filename
     output_filename = f"{instructor.get('Instructor', 'Unknown')}_Overview"
     output_filename = output_filename.replace(",", "").replace(" ", "_")
 
+    # Save .tex copy to tex dir
     full_output_path = os.path.join(tex_output_path, output_filename)
     doc.generate_tex(full_output_path)
     print(f"  ✅ Saved instructor LaTeX to {full_output_path}")
 
+    # Compile to PDF with 2 passes for cross-references (longtable, lastpage)
     pdf_filename = f"{output_filename}.pdf"
     full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
-    doc.generate_pdf(full_scorecard_output_path, clean_tex=True, compiler='pdflatex')
+    _compile_pdf(doc, full_scorecard_output_path, compiler='pdflatex', clean_tex=True)
     print(f"📝✅ Saved instructor Scorecard to {full_scorecard_output_path}")

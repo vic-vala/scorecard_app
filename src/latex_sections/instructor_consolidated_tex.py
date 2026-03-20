@@ -43,8 +43,8 @@ def get_helper_commands():
     }}}}}}}}}%
 }%
 %
-% --- Sparkline placeholder (per-course) ---
-\newcommand{\spark}[1]{\smash{\raisebox{-0.25\height}{\includegraphics[height=0.4cm,width=6cm]{boxplot_#1.png}}}}%
+% --- Sparkline (per-course GPA boxplot) ---
+\newcommand{\spark}[1]{\smash{\raisebox{-0.25\height}{\includegraphics[height=0.4cm,width=6cm]{\BoxplotDir/boxplot_\BoxplotStem_#1.png}}}}%
 %
 \newcommand{\thinrule}{%
     \arrayrulecolor{ruleGray}%
@@ -59,12 +59,10 @@ def get_helper_commands():
 \newcolumntype{R}[1]{>{\raggedleft\arraybackslash}m{#1}}%
 %
 % --- Course-row macro (data row + detail row with histogram + AI summary) ---
-\newcounter{courserowcnt}%
-\setcounter{courserowcnt}{0}%
-%
+% NOTE: Alternating \rowcolor removed — \rowcolor uses \noalign internally,
+% which is incompatible with \ifodd conditionals inside xltabular/longtable.
+% Rows are visually separated by \thinrule instead.
 \newcommand{\courserow}[1]{%
-    \stepcounter{courserowcnt}%
-    \ifodd\value{courserowcnt}\else\rowcolor{rowBlueAlt}\fi%
     \csname Course#1Name\endcsname &
     \csname Course#1Term\endcsname &
     \csname Course#1Code\endcsname &
@@ -83,14 +81,13 @@ def get_helper_commands():
     \autoD{\csname Course#1QthreeDelta\endcsname} \\*
     \noalign{\penalty10000}%
     % --- Detail row: histogram + AI overview ---
-    \ifodd\value{courserowcnt}\else\rowcolor{rowBlueAlt}\fi%
     \multicolumn{18}{@{\hspace{\tabcolsep}}l@{\hspace{\tabcolsep}}}{%
         \begin{minipage}[t]{\dimexpr\linewidth-2\tabcolsep\relax}%
         \vspace{1pt}%
         \noindent%
         \begin{minipage}[t]{0.20\linewidth}%
             \vspace{0pt}%
-            \includegraphics[width=\linewidth]{histogram_#1.png}%
+            \includegraphics[width=\linewidth]{\HistDir/histogram_\BoxplotStem_#1.png}%
         \end{minipage}%
         \hfill%
         \begin{minipage}[t]{0.76\linewidth}%
@@ -110,7 +107,7 @@ def get_helper_commands():
         \begin{minipage}[c]{\dimexpr\linewidth-2\tabcolsep\relax}%
         \vspace{4pt}%
         \centering%
-        \includegraphics[width=\linewidth]{coursehistory_#1.png}%
+        \includegraphics[width=\linewidth]{\OverlayDir/coursehistory_\BoxplotStem_#1.png}%
         \vspace{4pt}%
         \end{minipage}%
     } \\
@@ -216,7 +213,6 @@ def get_per_course_table_header():
 \setlength{\arrayrulewidth}{0.3pt}%
 \setlength{\tabcolsep}{3pt}%
 %
-\setcounter{courserowcnt}{0}%
 \noindent%
 \begin{xltabular}{\textwidth}{%
     l%              Course
@@ -250,7 +246,7 @@ def get_per_course_table_header():
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
 \textcolor{headerFg}{\textbf{GPA}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{Trend}}} &
+\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{GPA Trend}}} &
 \textcolor{headerFg}{\textbf{Q1}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
 \textcolor{headerFg}{\textbf{Med}} &
@@ -271,7 +267,7 @@ def get_per_course_table_header():
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
 \textcolor{headerFg}{\textbf{GPA}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{Trend}}} &
+\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{GPA Trend}}} &
 \textcolor{headerFg}{\textbf{Q1}} &
 \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
 \textcolor{headerFg}{\textbf{Med}} &

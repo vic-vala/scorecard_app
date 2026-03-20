@@ -353,7 +353,7 @@ class FirstRunSetup:
 
                     required_packages = [
                         'tcolorbox',
-                        'tools',        # Contains tabularx
+                        'tools',        # Contains tabularx, array, calc
                         'xcolor',
                         'geometry',
                         'graphics',     # Contains graphicx
@@ -374,8 +374,8 @@ class FirstRunSetup:
                         'ragged2e',
                         'amsmath',
                         'grfext',
+                        'ltablex',
                         'xltabular',
-                        'ltablex'
                     ]
 
                     for package in required_packages:
