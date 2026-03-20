@@ -644,7 +644,7 @@ class _InstructorConsolidatedDoc:
         # Per-course commands (data + AI summaries)
         self._add_per_course_commands()
 
-        # Helper commands (autoD, spark, rules, courserow/coursehistoryrow macros)
+        # Helper commands (autoD, spark, rules, courserow/coursehistoryrow/courseheaderrow macros)
         p.append(NoEscape(instructor_consolidated_tex.get_helper_commands()))
 
         # Page style
@@ -777,8 +777,11 @@ class _InstructorConsolidatedDoc:
         for group_idx, (group_key, course_indices) in enumerate(self.course_groups):
             history_prefix = self.history_prefixes[group_idx]
 
-            # Course history row before each unique course group
+            # Course history overlay FIRST (above the column headers for this group)
             d.append(NoEscape(rf"\coursehistoryrow{{{history_prefix}}}%"))
+
+            # Column header row BELOW the overlay image
+            d.append(NoEscape(r"\courseheaderrow%"))
 
             # Course session rows within this group
             for ci in course_indices:

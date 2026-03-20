@@ -195,8 +195,6 @@ def generate_course_grade_histogram(
 
     filename = f"{department}_{course_code}_{professor}_{term}_{year}_{course_number}.png"
     out_path = os.path.join(grade_hist_dir, filename)
-    scorecard_dir = paths.get("scorecard_dir")
-    scorecard_out_path = os.path.join(scorecard_dir, filename) if scorecard_dir else None
 
     # plotting ####################################################
     fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=dpi)
@@ -331,14 +329,7 @@ def generate_course_grade_histogram(
         return output_override
 
     fig.savefig(out_path, facecolor="#ffffff")
-    if scorecard_out_path:
-        os.makedirs(scorecard_dir, exist_ok=True)
-        fig.savefig(scorecard_out_path, facecolor="#ffffff")
     plt.close(fig)
-
-    if scorecard_out_path:
-        print(f"    ✅ Generated course grade histogram: {scorecard_out_path}")
-        return scorecard_out_path
 
     print(f"    ✅ Generated course grade histogram: {out_path}")
     return out_path

@@ -45,6 +45,10 @@ def _compile_pdf(doc, output_path, compiler='pdflatex', clean_tex=True, passes=2
         clean_tex: remove .tex after compilation
         passes: number of pdflatex passes (2 resolves most cross-refs)
     """
+    # Strip .pdf extension if caller accidentally included it
+    if output_path.endswith('.pdf'):
+        output_path = output_path[:-4]
+
     # Generate .tex file
     doc.generate_tex(output_path)
 
@@ -170,11 +174,10 @@ def assemble_scorecard(
     latex_doc.doc.generate_tex(full_output_path)
     print(f"  ✅ Saved LaTeX to {full_output_path}")
 
-    # Compile to PDF with 2 passes for cross-references
-    pdf_filename = f"{latex_doc.output_filename}.pdf"
-    full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
+    # Compile to PDF — pass path WITHOUT .pdf extension (_compile_pdf appends it)
+    full_scorecard_output_path = os.path.join(scorecard_output_path, latex_doc.output_filename)
     _compile_pdf(latex_doc.doc, full_scorecard_output_path, compiler='pdflatex', clean_tex=True)
-    print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}")
+    print(f"📝✅ Saved PDF Scorecard to {full_scorecard_output_path}.pdf")
 
 def assemble_instructor_scorecard(
     instructor: Mapping[str, Any],
@@ -232,7 +235,7 @@ def assemble_instructor_scorecard(
     # Generate per-course-group history overlay graphs into instructor_overlays folder
     doc_builder.generate_course_history_overlays(overlay_dir)
 
-    # Output filename
+    # Output filename (no .pdf extension — _compile_pdf appends it)
     output_filename = f"{instructor.get('Instructor', 'Unknown')}_Overview"
     output_filename = output_filename.replace(",", "").replace(" ", "_")
 
@@ -241,8 +244,7 @@ def assemble_instructor_scorecard(
     doc.generate_tex(full_output_path)
     print(f"  ✅ Saved instructor LaTeX to {full_output_path}")
 
-    # Compile to PDF with 2 passes for cross-references (longtable, lastpage)
-    pdf_filename = f"{output_filename}.pdf"
-    full_scorecard_output_path = os.path.join(scorecard_output_path, pdf_filename)
+    # Compile to PDF — pass path WITHOUT .pdf extension (_compile_pdf appends it)
+    full_scorecard_output_path = os.path.join(scorecard_output_path, output_filename)
     _compile_pdf(doc, full_scorecard_output_path, compiler='pdflatex', clean_tex=True)
-    print(f"📝✅ Saved instructor Scorecard to {full_scorecard_output_path}")
+    print(f"📝✅ Saved instructor Scorecard to {full_scorecard_output_path}.pdf")

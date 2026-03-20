@@ -27,7 +27,7 @@ def get_color_definitions():
 
 
 def get_helper_commands():
-    """AutoD, spark, rules, column types, courserow macro with detail sub-row, coursehistoryrow macro."""
+    """AutoD, spark, rules, column types, courserow macro with detail sub-row, coursehistoryrow macro, courseheaderrow macro."""
     return r'''
 \newcommand{\autoD}[1]{%
     \IfStrEq{#1}{0}{\textcolor{neu}{#1}}{%
@@ -57,6 +57,29 @@ def get_helper_commands():
 %
 \newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}%
 \newcolumntype{R}[1]{>{\raggedleft\arraybackslash}m{#1}}%
+%
+% --- Column header row macro (inserted after each course history overlay) ---
+\newcommand{\courseheaderrow}{%
+    \thickrule%
+    \rowcolor{headerBg}%
+    \textcolor{headerFg}{\textbf{Course}} &
+    \textcolor{headerFg}{\textbf{Term}} &
+    \textcolor{headerFg}{\textbf{Code}} &
+    \textcolor{headerFg}{\textbf{Size}} &
+    \textcolor{headerFg}{\textbf{Resp}} &
+    \textcolor{headerFg}{\textbf{Eval}} &
+    \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
+    \textcolor{headerFg}{\textbf{GPA}} &
+    \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
+    \multicolumn{3}{c}{\textcolor{headerFg}{\textbf{GPA Trend}}} &
+    \textcolor{headerFg}{\textbf{Q1}} &
+    \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
+    \textcolor{headerFg}{\textbf{Med}} &
+    \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
+    \textcolor{headerFg}{\textbf{Q3}} &
+    \textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} \\
+    \thickrule%
+}%
 %
 % --- Course-row macro (data row + detail row with histogram + AI summary) ---
 % NOTE: Alternating \rowcolor removed — \rowcolor uses \noalign internally,
@@ -204,7 +227,13 @@ Median &
 
 
 def get_per_course_table_header():
-    """Opening of the per-course xltabular (18 columns with spacers around Trend)."""
+    """Opening of the per-course xltabular (18 columns with spacers around Trend).
+    
+    The first-page header (\endfirsthead) is intentionally empty (just rules)
+    so that course history overlay images appear ABOVE the column labels.
+    Column labels are inserted per-group via the \courseheaderrow macro.
+    Continuation-page headers (\endhead) still show column labels for context.
+    """
     return r'''
 {%
 \sffamily\footnotesize%
@@ -234,26 +263,7 @@ def get_per_course_table_header():
     r%              Q3
     r%              Δ
 }%
-% --- Header (first page) ---
-\thickrule%
-\rowcolor{headerBg}%
-\textcolor{headerFg}{\textbf{Course}} &
-\textcolor{headerFg}{\textbf{Term}} &
-\textcolor{headerFg}{\textbf{Code}} &
-\textcolor{headerFg}{\textbf{Size}} &
-\textcolor{headerFg}{\textbf{Resp}} &
-\textcolor{headerFg}{\textbf{Eval}} &
-\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\textcolor{headerFg}{\textbf{GPA}} &
-\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{GPA Trend}}} &
-\textcolor{headerFg}{\textbf{Q1}} &
-\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\textcolor{headerFg}{\textbf{Med}} &
-\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\textcolor{headerFg}{\textbf{Q3}} &
-\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} \\
-\thickrule%
+% --- Header (first page) — intentionally empty so overlays precede labels ---
 \endfirsthead%
 % --- Header (continuation pages) ---
 \thickrule%
