@@ -232,7 +232,8 @@ def get_per_course_table_header():
     The first-page header (\endfirsthead) is intentionally empty (just rules)
     so that course history overlay images appear ABOVE the column labels.
     Column labels are inserted per-group via the \courseheaderrow macro.
-    Continuation-page headers (\endhead) still show column labels for context.
+    Continuation-page headers (\endhead) are also empty to avoid double headers
+    when a page break coincides with a new course group.
     """
     return r'''
 {%
@@ -265,26 +266,7 @@ def get_per_course_table_header():
 }%
 % --- Header (first page) — intentionally empty so overlays precede labels ---
 \endfirsthead%
-% --- Header (continuation pages) ---
-\thickrule%
-\rowcolor{headerBg}%
-\textcolor{headerFg}{\textbf{Course}} &
-\textcolor{headerFg}{\textbf{Term}} &
-\textcolor{headerFg}{\textbf{Code}} &
-\textcolor{headerFg}{\textbf{Size}} &
-\textcolor{headerFg}{\textbf{Resp}} &
-\textcolor{headerFg}{\textbf{Eval}} &
-\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\textcolor{headerFg}{\textbf{GPA}} &
-\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\multicolumn{3}{c}{\textcolor{headerFg}{\textbf{GPA Trend}}} &
-\textcolor{headerFg}{\textbf{Q1}} &
-\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\textcolor{headerFg}{\textbf{Med}} &
-\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} &
-\textcolor{headerFg}{\textbf{Q3}} &
-\textcolor{headerFg}{\textbf{$\boldsymbol{\Delta}$}} \\
-\thickrule%
+% --- Header (continuation pages) — also empty; \courseheaderrow handles labels per-group ---
 \endhead%
 % --- Footer (continuation pages) ---
 \thickrule%

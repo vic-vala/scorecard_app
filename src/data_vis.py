@@ -790,12 +790,15 @@ def generate_instructor_course_history_overlay_graph(
     - +/- 1 SD band
     - current instructor GPA line for the selected course in purple
 
-    If output_override is provided, saves to that exact path instead of scorecard_dir.
+    If output_override is provided, saves to that exact path instead.
     """
     paths = config.get("paths", {}) or config.get("PATHS", {})
-    output_dir = paths.get("instructor_overlay_dir") or paths.get("scorecard_dir")
+    output_dir = (
+        paths.get("instructor_overlay_dir")
+        or os.path.join(paths.get("temp_dir", "temporary_files"), "instructor_overlays")
+    )
     if not output_dir:
-        raise KeyError("instructor_overlay_dir/scorecard_dir not found in config['paths'].")
+        raise KeyError("instructor_overlay_dir not found in config['paths'].")
     os.makedirs(output_dir, exist_ok=True)
 
     # Compact defaults for small image embedding in instructor short cards.
