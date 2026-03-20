@@ -324,6 +324,22 @@ class FirstRunSetup:
                         tlmgr_cmd = [str(tlmgr_bin)]
                         log(f"  Using tlmgr: {tlmgr_bin}")
 
+                    # Pin repository to match the TinyTeX release year (2025)
+                    # to avoid cross-release update errors when CTAN moves to a newer year
+                    try:
+                        log("  Pinning tlmgr to TeX Live 2025 repository...")
+                        result = subprocess.run(
+                            tlmgr_cmd + ['option', 'repository',
+                                         'https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2025/tlnet-final'],
+                            capture_output=True,
+                            timeout=60,
+                            text=True
+                        )
+                        if result.returncode != 0:
+                            log(f"  ⚠️  Warning: Could not set repository: {result.stderr}")
+                    except Exception as e:
+                        log(f"  ⚠️  Warning: Could not set repository: {e}")
+
                     try:
                         # Update tlmgr itself
                         result = subprocess.run(
@@ -353,7 +369,7 @@ class FirstRunSetup:
 
                     required_packages = [
                         'tcolorbox',
-                        'tools',        # Contains tabularx
+                        'tools',        # Contains tabularx, array, calc
                         'xcolor',
                         'geometry',
                         'graphics',     # Contains graphicx
@@ -373,7 +389,10 @@ class FirstRunSetup:
                         'multirow',
                         'ragged2e',
                         'amsmath',
-                        'grfext'
+                        'grfext',
+                        'lmodern',
+                        'ltablex',
+                        'xltabular',
                     ]
 
                     for package in required_packages:
