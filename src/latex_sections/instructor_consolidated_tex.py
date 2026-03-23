@@ -227,7 +227,7 @@ Median &
 
 
 def get_per_course_table_header():
-    """Opening of the per-course xltabular (18 columns with spacers around Trend).
+    r"""Opening of the per-course xltabular (18 columns with spacers around Trend).
     
     The first-page header (\endfirsthead) is intentionally empty (just rules)
     so that course history overlay images appear ABOVE the column labels.
