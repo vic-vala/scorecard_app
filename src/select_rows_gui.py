@@ -36,28 +36,33 @@ HIDDEN_COLUMNS = [
 ]
 
 GUI_TEXT = {
-    "session": {
-        "name": "Select Course Sessions",
+    "instructor": {
+        "name": "Select Instructors",
         "text": (
-            "Select course sessions for Scorecard creation.\n"
-            "Every row selected will create one Scorecard PDF, with a full page of summary information about the course.\n"
-            "When finished selecting all desired course sessions, press Confirm."
+            "For each instructor selected, a multi-page Scorecard is created for them, containing a summary of various overall\n"
+            "course metrics and an LLM summarization on positive/negative student comments during evaluation, for each course\n"
+            "they taught.\n\n"
+            "REQUIRED: Instructor must have both an evaluation page AND spreadsheet data to generate a scorecard for them.\n\n"
+            "Click “Confirm” once all instructors of interest have been selected to generate instructor scorecard(s)."
         ),
     },
     "course": {
         "name": "Select Courses",
         "text": (
-            "Select courses for Course History Graph creation.\n"
-            "Every row selected will create one Course History Graph PNG image, with a GPA over time for all course sessions, \ngrouped by instructor.\n"
-            "When finished selecting all desired courses, press Confirm."
+            "For each unique course selected, a graph containing the GPA of all sessions by professor over time is created.\n"
+            "Instructors can be identified by the color and shape of the dots on the graph and the legend, and the grey area is\n"
+            "+/- one standard deviation.\n\n"
+            "Click “Confirm” once all courses of interest have been selected to generate course history scorecard(s)."
         ),
     },
-    "instructor": {
-        "name": "Select Instructors",
+    "session": {
+        "name": "Select Course Sessions",
         "text": (
-            "Select instructors for Instructor Scorecard creation.\n"
-            "Every row selected will create one Instructor Scorecard PDF, with a short summary of key information about every \ncourse from the instructor on file.\n"
-            "When finished selecting all desired instructors, press Confirm."
+            "For each course session selected, a Scorecard is created for them, containing a more in depth summary of both the\n"
+            "instructor evaluation metrics and grade information for a given course session. Also includes LLM summarization of\n"
+            "positive/negative student comments from evaluation.\n\n"
+            "REQUIRED: Only courses with both an instructor evaluation and a row in the spreadsheet will generate a scorecard.\n\n" 
+            "Click “Confirm” once all course sessions of interest have been selected to generate course session scorecard(s)."
         ),
     },
 }
