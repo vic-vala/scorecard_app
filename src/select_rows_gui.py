@@ -73,10 +73,18 @@ class _SelectionTab:
     Internal helper encapsulating the row UI for a single dataframe inside one tab
     """
 
-    def __init__(self, notebook: ttk.Notebook, df: pd.DataFrame, instruction_text: str, tab_title: str):
+    def __init__(
+        self,
+        notebook: ttk.Notebook,
+        df: pd.DataFrame,
+        instruction_text: str,
+        tab_title: str,
+        image_path: str = None,
+    ):
         self.df = df if df is not None else pd.DataFrame()
         self.instruction_text = instruction_text
         self.tab_title = tab_title
+        self.image_path = image_path
         self.selected_row_ids = set()
         self.visible_cols = [c for c in self.df.columns if c not in HIDDEN_COLUMNS]
 
@@ -94,14 +102,28 @@ class _SelectionTab:
     # UI construction #################################
 
     def _build_widgets(self):
-        # instruction label
+        # instruction label + optional image in top area
+        top_frame = ttk.Frame(self.frame)
+        top_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(10, 0))
+
         instruction_label = ttk.Label(
-            self.frame,
+            top_frame,
             text=self.instruction_text,
-            wraplength=1200,
+            wraplength=900,
             justify="left",
         )
-        instruction_label.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(10, 0))
+        instruction_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        self.photo = None
+        if self.image_path:
+            try:
+                self.photo = tk.PhotoImage(file=self.image_path)
+                image_label = ttk.Label(top_frame, image=self.photo)
+                image_label.pack(side=tk.RIGHT, padx=(10, 0))
+            except Exception as ex:
+                print(
+                    f"Warning: could not load image for tab '{self.tab_title}' from '{self.image_path}': {ex}"
+                )
 
         # search controls
         search_frame = ttk.Frame(self.frame)
@@ -398,18 +420,21 @@ def select_rows_gui_with_tabs(
         instructor_df,
         GUI_TEXT["instructor"]["text"],
         GUI_TEXT["instructor"]["name"],
+        image_path="temporary_files/images/instructor.png",
     )
     course_tab = _SelectionTab(
         notebook,
         course_history_df,
         GUI_TEXT["course"]["text"],
         GUI_TEXT["course"]["name"],
+        image_path="temporary_files/images/courses.png",
     )
     session_tab = _SelectionTab(
         notebook,
         scorecard_sessions_df,
         GUI_TEXT["session"]["text"],
         GUI_TEXT["session"]["name"],
+        image_path="temporary_files/images/course_sessions.png",
     )
 
     results = {
