@@ -388,11 +388,11 @@ def select_rows_gui_with_tabs(
     notebook = ttk.Notebook(root)
     notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-    session_tab = _SelectionTab(
+    instructor_tab = _SelectionTab(
         notebook,
-        scorecard_sessions_df,
-        GUI_TEXT["session"]["text"],
-        GUI_TEXT["session"]["name"],
+        instructor_df,
+        GUI_TEXT["instructor"]["text"],
+        GUI_TEXT["instructor"]["name"],
     )
     course_tab = _SelectionTab(
         notebook,
@@ -400,11 +400,11 @@ def select_rows_gui_with_tabs(
         GUI_TEXT["course"]["text"],
         GUI_TEXT["course"]["name"],
     )
-    instructor_tab = _SelectionTab(
+    session_tab = _SelectionTab(
         notebook,
-        instructor_df,
-        GUI_TEXT["instructor"]["text"],
-        GUI_TEXT["instructor"]["name"],
+        scorecard_sessions_df,
+        GUI_TEXT["session"]["text"],
+        GUI_TEXT["session"]["name"],
     )
 
     results = {
