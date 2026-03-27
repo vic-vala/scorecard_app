@@ -131,13 +131,6 @@ def save_json(pdf_json, fi,  parsed_base_dir):
         json.dump(pdf_json, file, indent=4)
     print(f"  ✅ Saved json data to {os.path.join(parsed_base_dir, course_json_filename)}")
 
-def _expected_json_paths(fi, parsed_base_dir):
-    course_output_dir = os.path.join(parsed_base_dir, "courses_output", f"{fi.department}_{fi.course}")
-    professor_output_dir = os.path.join(parsed_base_dir, "professors_output", f"{fi.professor}")
-    course_json_path = os.path.join(course_output_dir, f"{fi.term}_{fi.year}.json")
-    professor_json_path = os.path.join(professor_output_dir, f"{fi.department}_{fi.course}_{fi.term}_{fi.year}.json")
-    return course_json_path, professor_json_path
-
 def run_pdf_parser(pdf_source, parsed_base_dir, overwrite_json=False):
     try:
         if not os.path.exists(pdf_source):
@@ -158,10 +151,11 @@ def run_pdf_parser(pdf_source, parsed_base_dir, overwrite_json=False):
                         fi = filename_info(dpt, crs, prof, yr, trm, course_number)
 
                         pdf_path = os.path.join(root, file)
-                        course_json_path, professor_json_path = _expected_json_paths(fi, parsed_base_dir)
+                        json_filename = f"{fi.department}_{fi.course}_{fi.professor}_{fi.term}_{fi.year}_{fi.course_number}.json"
+                        json_path = os.path.join(parsed_base_dir, json_filename)
 
                         # Skip if JSON already exists and overwrite_json is False
-                        if not overwrite_json and os.path.exists(course_json_path) and os.path.exists(professor_json_path):
+                        if not overwrite_json and os.path.exists(json_path):
                             print(f"  ⏭️ Skipping {file}: JSON already exists")
                             continue
 

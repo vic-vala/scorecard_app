@@ -20,6 +20,7 @@ resources/
 scorecards/
 *.gguf
 ./*.tex
+logs/
 
 .Python
 build/

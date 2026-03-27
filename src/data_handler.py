@@ -225,6 +225,12 @@ def aggregate_for_row(
 
     Returns a dict with:
       gpa                mean GPA over matched CSV rows
+      gpa_std            population std dev of GPAs
+      gpa_min            minimum GPA across matched CSV rows
+      gpa_q1             first quartile GPA
+      gpa_median_value   median GPA
+      gpa_q3             third quartile GPA
+      gpa_max            maximum GPA across matched CSV rows
       median_grade       median letter grade over all students in matched CSV rows
       q1_grade           first quartile grade
       q3_grade           third quartile grade
@@ -282,6 +288,19 @@ def aggregate_for_row(
     else:
         gpa_value = None
         gpa_std = None
+
+    # GPA distribution for boxplot sparklines
+    if len(gpas) >= 2:
+        qs = statistics.quantiles(gpas, n=4)
+        gpa_min = min(gpas)
+        gpa_q1 = qs[0]
+        gpa_median_value = qs[1]
+        gpa_q3 = qs[2]
+        gpa_max = max(gpas)
+    elif len(gpas) == 1:
+        gpa_min = gpa_q1 = gpa_median_value = gpa_q3 = gpa_max = gpas[0]
+    else:
+        gpa_min = gpa_q1 = gpa_median_value = gpa_q3 = gpa_max = None
 
     # Grade distribution and quartiles from CSV
     grade_percentages = {g: 0.0 for g in GRADE_COLS}
@@ -401,6 +420,11 @@ def aggregate_for_row(
         "aggregate_name": aggregate_name,
         "gpa": gpa_value,
         "gpa_std": gpa_std,
+        "gpa_min": gpa_min,
+        "gpa_q1": gpa_q1,
+        "gpa_median_value": gpa_median_value,
+        "gpa_q3": gpa_q3,
+        "gpa_max": gpa_max,
         "median_grade": median_grade,
         "q1_grade": q1_grade,
         "q3_grade": q3_grade,

@@ -49,6 +49,9 @@ a = Analysis(
         # Schema files
         (os.path.join(project_root, 'src/schema/*.py'), 'src/schema'),
 
+        # LaTeX formatting files
+        (os.path.join(project_root, 'src/latex_sections/*.py'), 'src/latex_sections'),
+
         # Azure ttk theme files
         (os.path.join(project_root, 'src/azure.tcl'), 'src'),
         (os.path.join(project_root, 'src/theme'), 'src/theme'),

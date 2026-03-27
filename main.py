@@ -31,6 +31,7 @@ class Application:
         self.sc_settings = config['scorecard_gen_settings']
         self.data_vis_settings = config['data_vis_settings']
         self.include_llm_insights = str(self.sc_settings.get("include_LLM_insights", "false")).lower() == "true"
+        self.generate_per_session = str(self.sc_settings.get("generate_per_session_scorecards", "false")).lower() == "true"
         self.overwrite_json = str(config.get("overwrite_settings", {}).get("overwrite_json", "false")).lower() == "true"
 
         # Set later
@@ -126,14 +127,16 @@ class Application:
     def create_scorecards(self):
         print("📝 Generating LaTeX")
 
-        # Iterate through the scorecards to generate one at a time
-        for _, course in self.selected_scorecard_courses.iterrows():
-            scorecard_assembler.assemble_scorecard(
-                course=course, 
-                config=self.config,
-                csv_path=self.csv_path[0],
-            )
-        
+        if self.generate_per_session:
+            for _, course in self.selected_scorecard_courses.iterrows():
+                scorecard_assembler.assemble_scorecard(
+                    course=course,
+                    config=self.config,
+                    csv_path=self.csv_path[0],
+                )
+        else:
+            print("  ⏭️ Per-session scorecards skipped (disabled in config)")
+
         for _, instructor in self.selected_scorecard_instructors.iterrows():
             scorecard_assembler.assemble_instructor_scorecard(
                 instructor=instructor,
@@ -188,6 +191,7 @@ if __name__ == "__main__":
         app.gather_llm_insights()
         app.generate_data_visualizations()
         app.create_scorecards()
+        utils.cleanup_scorecard_pngs(config)
 
         # TODO: add cleanup function for temp in utils
     except Exception as e:
