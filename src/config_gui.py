@@ -8,8 +8,11 @@ from src.theme import apply_theme
 # hard coded display names
 PRETTY_NAME_MAP = {
     "include_LLM_insights": ("Include LLM summary?", "If this setting is enabled, an AI model with generate a short summary of student comments on each course scorecard. This may take a few minutes per scorecard."),
+    "debug_replace_LLM_with_placeholder": ("Use LLM placeholder?", "[Debug]\nReplaces AI-generated summaries with placeholder text instead of running the LLM model. Useful for testing scorecard generation without waiting for LLM inference."),
+    "generate_per_session_scorecards": ("Generate Per-Session Scorecards?", "When enabled, generates an individual detailed scorecard PDF for each selected course session in addition to the instructor overview scorecard.\n(Default: False)"),
     "overwrite_csv": ("Overwrite CSV?", "[Advanced]\nOverwrites internal CSV files created from Excel sheets.\n(Recommended: True)"),
-    "overwrite_json": ("Overwrite JSON?", "[Advanced]\nOverwrites internal JSON files created from Excel sheets.\n(Recommended: True)"),
+    "overwrite_json": ("Overwrite JSON?", "[Advanced]\nOverwrites internal JSON files created from Excel sheets.\n(Warning: This will clear any existing LLM summaries)"),
+    "overwrite_llm_summary": ("Overwrite LLM Summary?", "[Advanced]\nWhen enabled, regenerates AI summaries even if one already exists in the JSON file. Disable to reuse summaries from prior runs.\n(Recommended: False)"),
     "pdf_source": ("PDF Source", "The folder where all Course Evaluation PDF files are located."),
     "excel_source": ("Excel Source", "The course history Excel file."),
     "scorecard_dir": ("Scorecard Directory", "The desired folder for finished scorecard PDFs."),
@@ -28,12 +31,15 @@ SHOWN_KEYS = [
     "scorecard_dir",
     "gguf_path",
     "include_LLM_insights",
+    "debug_replace_LLM_with_placeholder",
+    "generate_per_session_scorecards",
     "match_term",
     "match_year",
     "match_subject",
     "match_catalog_number",
     "overwrite_csv",
     "overwrite_json",
+    "overwrite_llm_summary",
 ]
 
 def _looks_like_path(key: str, value) -> bool:

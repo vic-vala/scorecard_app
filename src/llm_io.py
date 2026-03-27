@@ -421,9 +421,13 @@ def run_llm(
 
     # determine whether to use debug placeholder
     debug_replace_llm_with_placeholder = False
+    overwrite_llm_summary = True
     if config is not None:
         debug_replace_llm_with_placeholder = str(
             config.get("scorecard_gen_settings", {}).get("debug_replace_LLM_with_placeholder", "false")
+        ).lower() == "true"
+        overwrite_llm_summary = str(
+            config.get("overwrite_settings", {}).get("overwrite_llm_summary", "true")
         ).lower() == "true"
 
     if debug_replace_llm_with_placeholder:
@@ -437,6 +441,11 @@ def run_llm(
         for _, course in selected_scorecard_courses.iterrows():
             pdf_json_path = course_to_json_path(course=course,config=config)
             pdf_json = load_pdf_json(pdf_json_path)
+
+            existing = pdf_json.get("llm_summary") if pdf_json else None
+            if not overwrite_llm_summary and existing and str(existing).strip():
+                log(f"  ⏭️ Skipping {pdf_json_path} — existing LLM summary found")
+                continue
 
             pdf_json["llm_summary"] = placeholder_text
 
@@ -475,6 +484,11 @@ def run_llm(
 
         course_name = f"{course.get('Subject', '')} {course.get('Catalog Nbr', '')} {course.get('Term', '')} {course.get('Year', '')}"
         log(f"\n📚 Processing course {idx}/{total_courses}: {course_name}")
+
+        existing = pdf_json.get("llm_summary") if pdf_json else None
+        if not overwrite_llm_summary and existing and str(existing).strip():
+            log(f"  ⏭️ Skipping {course_name} — existing LLM summary found")
+            continue
 
         # Retrieve user prompt (contains likes, dislikes, comments etc.)
         log("  📄 Loading evaluation comments...")

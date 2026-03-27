@@ -200,13 +200,13 @@ class FirstRunSetup:
             system = platform.system()
 
             if system == "Windows":
-                installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2025.10.31/TinyTeX-1-v2025.10.31.zip"
+                installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2026.03.02/TinyTeX-1-v2026.03.02.zip"
                 installer_file = self.tinytex_dir.parent / "tinytex_installer.zip"
             elif system == "Linux":
-                installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2025.10.31/TinyTeX-1-v2025.10.31.tar.gz"
+                installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2026.03.02/TinyTeX-1-v2026.03.02.tar.gz"
                 installer_file = self.tinytex_dir.parent / "tinytex_installer.tar.gz"
             elif system == "Darwin":  # macOS, not currently supported
-                installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2025.11/tinitex.tgz"
+                installer_url = "https://github.com/rstudio/tinytex-releases/releases/download/v2026.03.02/tinitex.tgz"
                 installer_file = self.tinytex_dir.parent / "tinytex_installer.tgz"
             else:
                 log(f"❌ Unsupported platform: {system}")
@@ -353,7 +353,7 @@ class FirstRunSetup:
 
                     required_packages = [
                         'tcolorbox',
-                        'tools',        # Contains tabularx
+                        'tools',        # Contains tabularx, array, calc
                         'xcolor',
                         'geometry',
                         'graphics',     # Contains graphicx
@@ -368,7 +368,14 @@ class FirstRunSetup:
                         'pdfcol',
                         'listings',
                         'listingsutf8',
-                        'xstring'       
+                        'xstring',
+                        'colortbl',
+                        'multirow',
+                        'ragged2e',
+                        'amsmath',
+                        'grfext',
+                        'ltablex',
+                        'xltabular',
                     ]
 
                     for package in required_packages:

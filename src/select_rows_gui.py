@@ -36,28 +36,33 @@ HIDDEN_COLUMNS = [
 ]
 
 GUI_TEXT = {
-    "session": {
-        "name": "Select Course Sessions",
+    "instructor": {
+        "name": "Select Instructors",
         "text": (
-            "Select course sessions for Scorecard creation.\n"
-            "Every row selected will create one Scorecard PDF, with a full page of summary information about the course.\n"
-            "When finished selecting all desired course sessions, press Confirm."
+            "For each instructor selected, a multi-page Scorecard is created for them, containing a summary of various overall\n"
+            "course metrics and an LLM summarization on positive/negative student comments during evaluation, for each course\n"
+            "they taught.\n\n"
+            "REQUIRED: Instructor must have both an evaluation page AND spreadsheet data to generate a scorecard for them.\n\n"
+            "Click “Confirm” once all instructors of interest have been selected to generate instructor scorecard(s)."
         ),
     },
     "course": {
         "name": "Select Courses",
         "text": (
-            "Select courses for Course History Graph creation.\n"
-            "Every row selected will create one Course History Graph PNG image, with a GPA over time for all course sessions, \ngrouped by instructor.\n"
-            "When finished selecting all desired courses, press Confirm."
+            "For each unique course selected, a graph containing the GPA of all sessions by professor over time is created.\n"
+            "Instructors can be identified by the color and shape of the dots on the graph and the legend, and the grey area is\n"
+            "+/- one standard deviation.\n\n"
+            "Click “Confirm” once all courses of interest have been selected to generate course history scorecard(s)."
         ),
     },
-    "instructor": {
-        "name": "Select Instructors",
+    "session": {
+        "name": "Select Course Sessions",
         "text": (
-            "Select instructors for Instructor Scorecard creation.\n"
-            "Every row selected will create one Instructor Scorecard PDF, with a short summary of key information about every \ncourse from the instructor on file.\n"
-            "When finished selecting all desired instructors, press Confirm."
+            "For each course session selected, a Scorecard is created for them, containing a more in depth summary of both the\n"
+            "instructor evaluation metrics and grade information for a given course session. Also includes LLM summarization of\n"
+            "positive/negative student comments from evaluation.\n\n"
+            "REQUIRED: Only courses with both an instructor evaluation and a row in the spreadsheet will generate a scorecard.\n\n" 
+            "Click “Confirm” once all course sessions of interest have been selected to generate course session scorecard(s)."
         ),
     },
 }
@@ -68,10 +73,18 @@ class _SelectionTab:
     Internal helper encapsulating the row UI for a single dataframe inside one tab
     """
 
-    def __init__(self, notebook: ttk.Notebook, df: pd.DataFrame, instruction_text: str, tab_title: str):
+    def __init__(
+        self,
+        notebook: ttk.Notebook,
+        df: pd.DataFrame,
+        instruction_text: str,
+        tab_title: str,
+        image_path: str = None,
+    ):
         self.df = df if df is not None else pd.DataFrame()
         self.instruction_text = instruction_text
         self.tab_title = tab_title
+        self.image_path = image_path
         self.selected_row_ids = set()
         self.visible_cols = [c for c in self.df.columns if c not in HIDDEN_COLUMNS]
 
@@ -89,14 +102,28 @@ class _SelectionTab:
     # UI construction #################################
 
     def _build_widgets(self):
-        # instruction label
+        # instruction label + optional image in top area
+        top_frame = ttk.Frame(self.frame)
+        top_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(10, 0))
+
         instruction_label = ttk.Label(
-            self.frame,
+            top_frame,
             text=self.instruction_text,
-            wraplength=1200,
+            wraplength=900,
             justify="left",
         )
-        instruction_label.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(10, 0))
+        instruction_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        self.photo = None
+        if self.image_path:
+            try:
+                self.photo = tk.PhotoImage(file=self.image_path)
+                image_label = ttk.Label(top_frame, image=self.photo)
+                image_label.pack(side=tk.RIGHT, padx=(10, 0))
+            except Exception as ex:
+                print(
+                    f"Warning: could not load image for tab '{self.tab_title}' from '{self.image_path}': {ex}"
+                )
 
         # search controls
         search_frame = ttk.Frame(self.frame)
@@ -388,23 +415,26 @@ def select_rows_gui_with_tabs(
     notebook = ttk.Notebook(root)
     notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-    session_tab = _SelectionTab(
+    instructor_tab = _SelectionTab(
         notebook,
-        scorecard_sessions_df,
-        GUI_TEXT["session"]["text"],
-        GUI_TEXT["session"]["name"],
+        instructor_df,
+        GUI_TEXT["instructor"]["text"],
+        GUI_TEXT["instructor"]["name"],
+        image_path="temporary_files/images/instructor.png",
     )
     course_tab = _SelectionTab(
         notebook,
         course_history_df,
         GUI_TEXT["course"]["text"],
         GUI_TEXT["course"]["name"],
+        image_path="temporary_files/images/courses.png",
     )
-    instructor_tab = _SelectionTab(
+    session_tab = _SelectionTab(
         notebook,
-        instructor_df,
-        GUI_TEXT["instructor"]["text"],
-        GUI_TEXT["instructor"]["name"],
+        scorecard_sessions_df,
+        GUI_TEXT["session"]["text"],
+        GUI_TEXT["session"]["name"],
+        image_path="temporary_files/images/course_sessions.png",
     )
 
     results = {

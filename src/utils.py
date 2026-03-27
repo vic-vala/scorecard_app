@@ -365,3 +365,31 @@ def _safe_float(val) -> float | None:
         return float(val)
     except (TypeError, ValueError):
         return None
+
+def cleanup_scorecard_pngs(config) -> None:
+    """
+    Remove all .png files from the scorecard output directory.
+
+    PNGs are copied there by data_vis so LaTeX can reference them during
+    compilation. Call this after scorecard generation is fully complete to
+    leave only PDFs in the scorecard directory.
+
+    Args:
+        config: Loaded config dict (from load_config())
+    """
+    scorecard_dir = config.get("paths", {}).get("scorecard_dir")
+    if not scorecard_dir or not os.path.isdir(scorecard_dir):
+        return
+
+    removed = 0
+    for fname in os.listdir(scorecard_dir):
+        if fname.lower().endswith(".png"):
+            fpath = os.path.join(scorecard_dir, fname)
+            try:
+                os.remove(fpath)
+                removed += 1
+            except OSError as e:
+                print(f"  ⚠️ Could not remove {fpath}: {e}")
+
+    if removed:
+        print(f"🗑️ Removed {removed} staging PNG(s) from {scorecard_dir}")
